@@ -105,6 +105,12 @@ components:
 
     WorkoutPlan:
       type: object
+      required:
+        - id
+        - name
+        - exercises
+        - createdAt
+        - updatedAt
       properties:
         id:
           type: string
@@ -116,9 +122,20 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PlanExercise'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
 
     PlanExercise:
       type: object
+      required:
+        - id
+        - exerciseName
+        - order
+        - sets
       properties:
         id:
           type: string
@@ -133,6 +150,10 @@ components:
 
     PlanSet:
       type: object
+      required:
+        - setNumber
+        - targetReps
+        - targetWeight
       properties:
         setNumber:
           type: integer
@@ -141,7 +162,7 @@ components:
         targetWeight:
           type: number
 
-    CreateWorkoutPlanInput:
+        CreateWorkoutPlanInput:
       type: object
       required:
         - name
@@ -149,15 +170,56 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
         description:
           type: string
         exercises:
           type: array
+          minItems: 1
           items:
-            $ref: '#/components/schemas/PlanExercise'
+            $ref: '#/components/schemas/CreatePlanExerciseInput'
+    
+    CreatePlanExerciseInput:
+      type: object
+      required:
+        - exerciseName
+        - order
+        - sets
+      properties:
+        exerciseName:
+          type: string
+          minLength: 1
+        order:
+          type: integer
+          minimum: 1
+        sets:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/CreatePlanSetInput'
+
+    CreatePlanSetInput:
+      type: object
+      required:
+        - setNumber
+        - targetReps
+        - targetWeight
+      properties:
+        setNumber:
+          type: integer
+          minimum: 1
+        targetReps:
+          type: integer
+          minimum: 1
+        targetWeight:
+          type: number
+          minimum: 0
 
     ExerciseHistoryResponse:
       type: object
+      required:
+        - exerciseName
+        - history
       properties:
         exerciseName:
           type: string
@@ -168,6 +230,9 @@ components:
 
     HistoryItem:
       type: object
+      required:
+        - performedAt
+        - sets
       properties:
         performedAt:
           type: string
@@ -179,6 +244,10 @@ components:
 
     HistorySet:
       type: object
+      required:
+        - setNumber
+        - actualReps
+        - actualWeight
       properties:
         setNumber:
           type: integer

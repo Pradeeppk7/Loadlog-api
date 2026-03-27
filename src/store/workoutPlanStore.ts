@@ -16,6 +16,14 @@ export type WorkoutPlan = {
   name: string;
   description?: string;
   exercises: PlanExercise[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+type CreateWorkoutPlanInput = {
+  name: string;
+  description?: string;
+  exercises: PlanExercise[];
 };
 
 type ExerciseHistorySet = {
@@ -28,6 +36,8 @@ type ExerciseHistoryItem = {
   performedAt: string;
   sets: ExerciseHistorySet[];
 };
+
+const now = new Date().toISOString();
 
 const workoutPlans: WorkoutPlan[] = [
   {
@@ -44,7 +54,9 @@ const workoutPlans: WorkoutPlan[] = [
           { setNumber: 2, targetReps: 8, targetWeight: 135 }
         ]
       }
-    ]
+    ],
+    createdAt: now,
+    updatedAt: now
   }
 ];
 
@@ -64,10 +76,16 @@ export function listWorkoutPlans(): WorkoutPlan[] {
   return workoutPlans;
 }
 
-export function createWorkoutPlan(data: Omit<WorkoutPlan, "id">): WorkoutPlan {
+export function createWorkoutPlan(data: CreateWorkoutPlanInput): WorkoutPlan {
+  const timestamp = new Date().toISOString();
+
   const newPlan: WorkoutPlan = {
     id: Date.now().toString(),
-    ...data
+    name: data.name,
+    description: data.description,
+    exercises: data.exercises,
+    createdAt: timestamp,
+    updatedAt: timestamp
   };
 
   workoutPlans.push(newPlan);
@@ -80,20 +98,25 @@ export function getWorkoutPlanById(planId: string): WorkoutPlan | undefined {
 
 export function updateWorkoutPlan(
   planId: string,
-  data: Omit<WorkoutPlan, "id">
+  data: CreateWorkoutPlanInput
 ): WorkoutPlan | undefined {
-  const index = workoutPlans.findIndex((plan) => plan.id === planId);
+  const existingPlan = workoutPlans.find((plan) => plan.id === planId);
 
-  if (index === -1) {
+  if (!existingPlan) {
     return undefined;
   }
 
   const updatedPlan: WorkoutPlan = {
-    id: planId,
-    ...data
+    ...existingPlan,
+    name: data.name,
+    description: data.description,
+    exercises: data.exercises,
+    updatedAt: new Date().toISOString()
   };
 
+  const index = workoutPlans.findIndex((plan) => plan.id === planId);
   workoutPlans[index] = updatedPlan;
+
   return updatedPlan;
 }
 
