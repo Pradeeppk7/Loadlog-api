@@ -1,0 +1,188 @@
+openapi: 3.1.0
+info:
+  title: LiftLog API
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3000
+
+paths:
+  /workout-plans:
+    get:
+      operationId: listWorkoutPlans
+      responses:
+        '200':
+          description: List of workout plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorkoutPlan'
+
+    post:
+      operationId: createWorkoutPlan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWorkoutPlanInput'
+      responses:
+        '201':
+          description: Created workout plan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkoutPlan'
+
+  /workout-plans/{planId}:
+    get:
+      operationId: getWorkoutPlanById
+      parameters:
+        - name: planId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Single workout plan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkoutPlan'
+
+    put:
+      operationId: updateWorkoutPlan
+      parameters:
+        - name: planId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWorkoutPlanInput'
+      responses:
+        '200':
+          description: Updated workout plan
+
+    delete:
+      operationId: deleteWorkoutPlan
+      parameters:
+        - name: planId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted workout plan
+
+  /exercises/{exerciseName}/history:
+    get:
+      operationId: getExerciseHistory
+      parameters:
+        - name: exerciseName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Exercise history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseHistoryResponse'
+
+components:
+  schemas:
+
+    WorkoutPlan:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        exercises:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanExercise'
+
+    PlanExercise:
+      type: object
+      properties:
+        id:
+          type: string
+        exerciseName:
+          type: string
+        order:
+          type: integer
+        sets:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanSet'
+
+    PlanSet:
+      type: object
+      properties:
+        setNumber:
+          type: integer
+        targetReps:
+          type: integer
+        targetWeight:
+          type: number
+
+    CreateWorkoutPlanInput:
+      type: object
+      required:
+        - name
+        - exercises
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        exercises:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanExercise'
+
+    ExerciseHistoryResponse:
+      type: object
+      properties:
+        exerciseName:
+          type: string
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/HistoryItem'
+
+    HistoryItem:
+      type: object
+      properties:
+        performedAt:
+          type: string
+          format: date-time
+        sets:
+          type: array
+          items:
+            $ref: '#/components/schemas/HistorySet'
+
+    HistorySet:
+      type: object
+      properties:
+        setNumber:
+          type: integer
+        actualReps:
+          type: integer
+        actualWeight:
+          type: number
