@@ -6,6 +6,7 @@ import { workoutPlanHandlers } from "../handlers/workoutPlanHandlers";
 const api = new OpenAPIBackend({
   definition: YAML.load("./src/openapi/openapi.yaml"),
   handlers: workoutPlanHandlers,
+  validate: true,
 });
 
 api.init();

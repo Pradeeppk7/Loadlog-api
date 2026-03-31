@@ -1,3 +1,6 @@
+
+import { supabase } from "../db/supabaseClient";
+
 type PlanSet = {
   setNumber: number;
   targetReps: number;
@@ -11,6 +14,43 @@ type PlanExercise = {
   sets: PlanSet[];
 };
 
+type SessionSet = {
+  setNumber: number;
+  actualReps: number;
+  actualWeight: number;
+};
+
+type SessionExercise = {
+  exerciseName: string;
+  sets: SessionSet[];
+};
+
+export type WorkoutSession = {
+  id: string;
+  planId: string;
+  performedAt: string;
+  notes?: string;
+  exercises: SessionExercise[];
+};
+
+type CreateSessionSetInput = {
+  setNumber: number;
+  actualReps: number;
+  actualWeight: number;
+};
+
+type CreateSessionExerciseInput = {
+  exerciseName: string;
+  sets: CreateSessionSetInput[];
+};
+
+type CreateWorkoutSessionInput = {
+  planId: string;
+  performedAt?: string;
+  notes?: string;
+  exercises: CreateSessionExerciseInput[];
+};
+
 export type WorkoutPlan = {
   id: string;
   name: string;
@@ -20,10 +60,22 @@ export type WorkoutPlan = {
   updatedAt: string;
 };
 
+type CreatePlanSetInput = {
+  setNumber: number;
+  targetReps: number;
+  targetWeight: number;
+};
+
+type CreatePlanExerciseInput = {
+  exerciseName: string;
+  order: number;
+  sets: CreatePlanSetInput[];
+};
+
 type CreateWorkoutPlanInput = {
   name: string;
   description?: string;
-  exercises: PlanExercise[];
+  exercises: CreatePlanExerciseInput[];
 };
 
 type ExerciseHistorySet = {
@@ -39,6 +91,7 @@ type ExerciseHistoryItem = {
 
 const now = new Date().toISOString();
 
+const workoutSessions: WorkoutSession[] = [];
 const workoutPlans: WorkoutPlan[] = [
   {
     id: "1",
@@ -60,6 +113,51 @@ const workoutPlans: WorkoutPlan[] = [
   }
 ];
 
+export function createWorkoutSession(data: CreateWorkoutSessionInput): WorkoutSession {
+  const newSession: WorkoutSession = {
+    id: `session-${Date.now()}`,
+    planId: data.planId,
+    performedAt: data.performedAt || new Date().toISOString(),
+    notes: data.notes,
+    exercises: data.exercises.map((exercise) => ({
+      exerciseName: exercise.exerciseName,
+      sets: exercise.sets.map((setItem) => ({
+        setNumber: setItem.setNumber,
+        actualReps: setItem.actualReps,
+        actualWeight: setItem.actualWeight
+      }))
+    }))
+  };
+
+  workoutSessions.push(newSession);
+  return newSession;
+}
+
+export function getExerciseHistory(exerciseName: string): {
+  exerciseName: string;
+  history: ExerciseHistoryItem[];
+} {
+  const history = workoutSessions
+    .filter((session) =>
+      session.exercises.some((exercise) => exercise.exerciseName === exerciseName)
+    )
+    .map((session) => {
+      const matchingExercise = session.exercises.find(
+        (exercise) => exercise.exerciseName === exerciseName
+      );
+
+      return {
+        performedAt: session.performedAt,
+        sets: matchingExercise ? matchingExercise.sets : []
+      };
+    })
+    .sort((a, b) => new Date(b.performedAt).getTime() - new Date(a.performedAt).getTime());
+
+  return {
+    exerciseName,
+    history
+  };
+}
 const exerciseHistory: Record<string, ExerciseHistoryItem[]> = {
   "Bench Press": [
     {
@@ -72,24 +170,69 @@ const exerciseHistory: Record<string, ExerciseHistoryItem[]> = {
   ]
 };
 
+function buildPlanExercises(inputExercises: CreatePlanExerciseInput[]): PlanExercise[] {
+  return inputExercises.map((exercise, index) => ({
+    id: `ex-${Date.now()}-${index + 1}`,
+    exerciseName: exercise.exerciseName,
+    order: exercise.order,
+    sets: exercise.sets.map((setItem) => ({
+      setNumber: setItem.setNumber,
+      targetReps: setItem.targetReps,
+      targetWeight: setItem.targetWeight
+    }))
+  }));
+}
+
 export function listWorkoutPlans(): WorkoutPlan[] {
   return workoutPlans;
 }
 
-export function createWorkoutPlan(data: CreateWorkoutPlanInput): WorkoutPlan {
-  const timestamp = new Date().toISOString();
 
-  const newPlan: WorkoutPlan = {
-    id: Date.now().toString(),
-    name: data.name,
-    description: data.description,
-    exercises: data.exercises,
-    createdAt: timestamp,
-    updatedAt: timestamp
-  };
+export async function createWorkoutPlan(data: any) {
+  // 1. Insert into workout_plans
+  const { data: plan, error: planError } = await supabase
+    .from("workout_plans")
+    .insert({
+      name: data.name,
+      description: data.description,
+    })
+    .select()
+    .single();
 
-  workoutPlans.push(newPlan);
-  return newPlan;
+  if (planError) {
+    throw new Error(planError.message);
+  }
+
+  // 2. Insert exercises
+  for (const exercise of data.exercises) {
+    const { data: planExercise, error: exError } = await supabase
+      .from("plan_exercises")
+      .insert({
+        plan_id: plan.id,
+        exercise_name: exercise.exerciseName,
+        order_index: exercise.order,
+      })
+      .select()
+      .single();
+
+    if (exError) throw new Error(exError.message);
+
+    // 3. Insert sets
+    const setsToInsert = exercise.sets.map((set: any) => ({
+      plan_exercise_id: planExercise.id,
+      set_number: set.setNumber,
+      target_reps: set.targetReps,
+      target_weight: set.targetWeight,
+    }));
+
+    const { error: setError } = await supabase
+      .from("plan_sets")
+      .insert(setsToInsert);
+
+    if (setError) throw new Error(setError.message);
+  }
+
+  return plan;
 }
 
 export function getWorkoutPlanById(planId: string): WorkoutPlan | undefined {
@@ -110,7 +253,7 @@ export function updateWorkoutPlan(
     ...existingPlan,
     name: data.name,
     description: data.description,
-    exercises: data.exercises,
+    exercises: buildPlanExercises(data.exercises),
     updatedAt: new Date().toISOString()
   };
 
@@ -131,12 +274,10 @@ export function deleteWorkoutPlan(planId: string): boolean {
   return true;
 }
 
-export function getExerciseHistory(exerciseName: string): {
-  exerciseName: string;
-  history: ExerciseHistoryItem[];
-} {
-  return {
-    exerciseName,
-    history: exerciseHistory[exerciseName] || []
-  };
+export function listWorkoutSessions(): WorkoutSession[] {
+  return workoutSessions;
+}
+
+export function getWorkoutSessionById(sessionId: string): WorkoutSession | undefined {
+  return workoutSessions.find((session) => session.id === sessionId);
 }
