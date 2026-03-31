@@ -100,7 +100,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ExerciseHistoryResponse'
 
-    /workout-sessions:
+  /workout-sessions:
     get:
       operationId: listWorkoutSessions
       responses:
@@ -225,6 +225,7 @@ components:
         targetWeight:
           type: number
 
+    
     CreateWorkoutPlanInput:
       type: object
       required:
@@ -259,8 +260,8 @@ components:
           type: array
           minItems: 1
           items:
-            $ref: '#/components/schemas/CreatePlanExerciseInput'
-
+            $ref: '#/components/schemas/CreatePlanSetInput'
+    
     CreatePlanSetInput:
       type: object
       required:
