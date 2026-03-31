@@ -1,4 +1,3 @@
-
 import { supabase } from "../db/supabaseClient";
 
 type PlanSet = {
@@ -12,6 +11,33 @@ type PlanExercise = {
   exerciseName: string;
   order: number;
   sets: PlanSet[];
+};
+
+export type WorkoutPlan = {
+  id: string;
+  name: string;
+  description?: string;
+  exercises: PlanExercise[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+type CreatePlanSetInput = {
+  setNumber: number;
+  targetReps: number;
+  targetWeight: number;
+};
+
+type CreatePlanExerciseInput = {
+  exerciseName: string;
+  order: number;
+  sets: CreatePlanSetInput[];
+};
+
+type CreateWorkoutPlanInput = {
+  name: string;
+  description?: string;
+  exercises: CreatePlanExerciseInput[];
 };
 
 type SessionSet = {
@@ -51,33 +77,6 @@ type CreateWorkoutSessionInput = {
   exercises: CreateSessionExerciseInput[];
 };
 
-export type WorkoutPlan = {
-  id: string;
-  name: string;
-  description?: string;
-  exercises: PlanExercise[];
-  createdAt: string;
-  updatedAt: string;
-};
-
-type CreatePlanSetInput = {
-  setNumber: number;
-  targetReps: number;
-  targetWeight: number;
-};
-
-type CreatePlanExerciseInput = {
-  exerciseName: string;
-  order: number;
-  sets: CreatePlanSetInput[];
-};
-
-type CreateWorkoutPlanInput = {
-  name: string;
-  description?: string;
-  exercises: CreatePlanExerciseInput[];
-};
-
 type ExerciseHistorySet = {
   setNumber: number;
   actualReps: number;
@@ -89,107 +88,124 @@ type ExerciseHistoryItem = {
   sets: ExerciseHistorySet[];
 };
 
-const now = new Date().toISOString();
-
-const workoutSessions: WorkoutSession[] = [];
-const workoutPlans: WorkoutPlan[] = [
-  {
-    id: "1",
-    name: "Push Day",
-    description: "Chest, shoulders, triceps",
-    exercises: [
-      {
-        id: "ex-1",
-        exerciseName: "Bench Press",
-        order: 1,
-        sets: [
-          { setNumber: 1, targetReps: 8, targetWeight: 135 },
-          { setNumber: 2, targetReps: 8, targetWeight: 135 }
-        ]
-      }
-    ],
-    createdAt: now,
-    updatedAt: now
-  }
-];
-
-export function createWorkoutSession(data: CreateWorkoutSessionInput): WorkoutSession {
-  const newSession: WorkoutSession = {
-    id: `session-${Date.now()}`,
-    planId: data.planId,
-    performedAt: data.performedAt || new Date().toISOString(),
-    notes: data.notes,
-    exercises: data.exercises.map((exercise) => ({
-      exerciseName: exercise.exerciseName,
-      sets: exercise.sets.map((setItem) => ({
-        setNumber: setItem.setNumber,
-        actualReps: setItem.actualReps,
-        actualWeight: setItem.actualWeight
-      }))
-    }))
-  };
-
-  workoutSessions.push(newSession);
-  return newSession;
-}
-
-export function getExerciseHistory(exerciseName: string): {
-  exerciseName: string;
-  history: ExerciseHistoryItem[];
-} {
-  const history = workoutSessions
-    .filter((session) =>
-      session.exercises.some((exercise) => exercise.exerciseName === exerciseName)
-    )
-    .map((session) => {
-      const matchingExercise = session.exercises.find(
-        (exercise) => exercise.exerciseName === exerciseName
-      );
-
-      return {
-        performedAt: session.performedAt,
-        sets: matchingExercise ? matchingExercise.sets : []
-      };
-    })
-    .sort((a, b) => new Date(b.performedAt).getTime() - new Date(a.performedAt).getTime());
-
-  return {
-    exerciseName,
-    history
-  };
-}
-const exerciseHistory: Record<string, ExerciseHistoryItem[]> = {
-  "Bench Press": [
-    {
-      performedAt: new Date().toISOString(),
-      sets: [
-        { setNumber: 1, actualReps: 8, actualWeight: 135 },
-        { setNumber: 2, actualReps: 8, actualWeight: 140 }
-      ]
-    }
-  ]
-};
-
-function buildPlanExercises(inputExercises: CreatePlanExerciseInput[]): PlanExercise[] {
-  return inputExercises.map((exercise, index) => ({
-    id: `ex-${Date.now()}-${index + 1}`,
-    exerciseName: exercise.exerciseName,
-    order: exercise.order,
-    sets: exercise.sets.map((setItem) => ({
-      setNumber: setItem.setNumber,
-      targetReps: setItem.targetReps,
-      targetWeight: setItem.targetWeight
-    }))
+function mapPlanSets(rows: any[]): PlanSet[] {
+  return (rows || []).map((row) => ({
+    setNumber: row.set_number,
+    targetReps: row.target_reps,
+    targetWeight: Number(row.target_weight),
   }));
 }
 
-export function listWorkoutPlans(): WorkoutPlan[] {
-  return workoutPlans;
+function mapSessionSets(rows: any[]): SessionSet[] {
+  return (rows || []).map((row) => ({
+    setNumber: row.set_number,
+    actualReps: row.actual_reps,
+    actualWeight: Number(row.actual_weight),
+  }));
 }
 
+async function buildWorkoutPlan(plan: any): Promise<WorkoutPlan> {
+  const { data: exercises, error: exercisesError } = await supabase
+    .from("plan_exercises")
+    .select("*")
+    .eq("plan_id", plan.id)
+    .order("order_index", { ascending: true });
 
-export async function createWorkoutPlan(data: any) {
-  // 1. Insert into workout_plans
+  if (exercisesError) {
+    throw new Error(exercisesError.message);
+  }
+
+  const formattedExercises: PlanExercise[] = [];
+
+  for (const exercise of exercises || []) {
+    const { data: sets, error: setsError } = await supabase
+      .from("plan_sets")
+      .select("*")
+      .eq("plan_exercise_id", exercise.id)
+      .order("set_number", { ascending: true });
+
+    if (setsError) {
+      throw new Error(setsError.message);
+    }
+
+    formattedExercises.push({
+      id: exercise.id,
+      exerciseName: exercise.exercise_name,
+      order: exercise.order_index,
+      sets: mapPlanSets(sets || []),
+    });
+  }
+
+  return {
+    id: plan.id,
+    name: plan.name,
+    description: plan.description || undefined,
+    exercises: formattedExercises,
+    createdAt: plan.created_at,
+    updatedAt: plan.updated_at,
+  };
+}
+
+async function buildWorkoutSession(session: any): Promise<WorkoutSession> {
+  const { data: exercises, error: exercisesError } = await supabase
+    .from("session_exercises")
+    .select("*")
+    .eq("session_id", session.id);
+
+  if (exercisesError) {
+    throw new Error(exercisesError.message);
+  }
+
+  const formattedExercises: SessionExercise[] = [];
+
+  for (const exercise of exercises || []) {
+    const { data: sets, error: setsError } = await supabase
+      .from("session_sets")
+      .select("*")
+      .eq("session_exercise_id", exercise.id)
+      .order("set_number", { ascending: true });
+
+    if (setsError) {
+      throw new Error(setsError.message);
+    }
+
+    formattedExercises.push({
+      exerciseName: exercise.exercise_name,
+      sets: mapSessionSets(sets || []),
+    });
+  }
+
+  return {
+    id: session.id,
+    planId: session.plan_id,
+    performedAt: session.performed_at,
+    notes: session.notes || undefined,
+    exercises: formattedExercises,
+  };
+}
+
+export async function listWorkoutPlans(): Promise<WorkoutPlan[]> {
+  const { data: plans, error } = await supabase
+    .from("workout_plans")
+    .select("*")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const result: WorkoutPlan[] = [];
+
+  for (const plan of plans || []) {
+    result.push(await buildWorkoutPlan(plan));
+  }
+
+  return result;
+}
+
+export async function createWorkoutPlan(
+  data: CreateWorkoutPlanInput
+): Promise<WorkoutPlan> {
   const { data: plan, error: planError } = await supabase
     .from("workout_plans")
     .insert({
@@ -199,13 +215,12 @@ export async function createWorkoutPlan(data: any) {
     .select()
     .single();
 
-  if (planError) {
-    throw new Error(planError.message);
+  if (planError || !plan) {
+    throw new Error(planError?.message || "Failed to create workout plan");
   }
 
-  // 2. Insert exercises
   for (const exercise of data.exercises) {
-    const { data: planExercise, error: exError } = await supabase
+    const { data: planExercise, error: exerciseError } = await supabase
       .from("plan_exercises")
       .insert({
         plan_id: plan.id,
@@ -215,69 +230,288 @@ export async function createWorkoutPlan(data: any) {
       .select()
       .single();
 
-    if (exError) throw new Error(exError.message);
+    if (exerciseError || !planExercise) {
+      throw new Error(exerciseError?.message || "Failed to create plan exercise");
+    }
 
-    // 3. Insert sets
-    const setsToInsert = exercise.sets.map((set: any) => ({
+    const setsToInsert = exercise.sets.map((setItem) => ({
       plan_exercise_id: planExercise.id,
-      set_number: set.setNumber,
-      target_reps: set.targetReps,
-      target_weight: set.targetWeight,
+      set_number: setItem.setNumber,
+      target_reps: setItem.targetReps,
+      target_weight: setItem.targetWeight,
     }));
 
-    const { error: setError } = await supabase
+    const { error: setsError } = await supabase
       .from("plan_sets")
       .insert(setsToInsert);
 
-    if (setError) throw new Error(setError.message);
+    if (setsError) {
+      throw new Error(setsError.message);
+    }
   }
 
-  return plan;
+  return await getWorkoutPlanById(plan.id) as WorkoutPlan;
 }
 
-export function getWorkoutPlanById(planId: string): WorkoutPlan | undefined {
-  return workoutPlans.find((plan) => plan.id === planId);
-}
+export async function getWorkoutPlanById(
+  planId: string
+): Promise<WorkoutPlan | undefined> {
+  const { data: plan, error } = await supabase
+    .from("workout_plans")
+    .select("*")
+    .eq("id", planId)
+    .maybeSingle();
 
-export function updateWorkoutPlan(
-  planId: string,
-  data: CreateWorkoutPlanInput
-): WorkoutPlan | undefined {
-  const existingPlan = workoutPlans.find((plan) => plan.id === planId);
+  if (error) {
+    throw new Error(error.message);
+  }
 
-  if (!existingPlan) {
+  if (!plan) {
     return undefined;
   }
 
-  const updatedPlan: WorkoutPlan = {
-    ...existingPlan,
-    name: data.name,
-    description: data.description,
-    exercises: buildPlanExercises(data.exercises),
-    updatedAt: new Date().toISOString()
-  };
-
-  const index = workoutPlans.findIndex((plan) => plan.id === planId);
-  workoutPlans[index] = updatedPlan;
-
-  return updatedPlan;
+  return await buildWorkoutPlan(plan);
 }
 
-export function deleteWorkoutPlan(planId: string): boolean {
-  const index = workoutPlans.findIndex((plan) => plan.id === planId);
+export async function updateWorkoutPlan(
+  planId: string,
+  data: CreateWorkoutPlanInput
+): Promise<WorkoutPlan | undefined> {
+  const existing = await getWorkoutPlanById(planId);
 
-  if (index === -1) {
-    return false;
+  if (!existing) {
+    return undefined;
   }
 
-  workoutPlans.splice(index, 1);
+  const { error: updateError } = await supabase
+    .from("workout_plans")
+    .update({
+      name: data.name,
+      description: data.description,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", planId);
+
+  if (updateError) {
+    throw new Error(updateError.message);
+  }
+
+  const { data: existingExercises, error: existingExercisesError } = await supabase
+    .from("plan_exercises")
+    .select("id")
+    .eq("plan_id", planId);
+
+  if (existingExercisesError) {
+    throw new Error(existingExercisesError.message);
+  }
+
+  for (const exercise of existingExercises || []) {
+    const { error: deleteSetsError } = await supabase
+      .from("plan_sets")
+      .delete()
+      .eq("plan_exercise_id", exercise.id);
+
+    if (deleteSetsError) {
+      throw new Error(deleteSetsError.message);
+    }
+  }
+
+  const { error: deleteExercisesError } = await supabase
+    .from("plan_exercises")
+    .delete()
+    .eq("plan_id", planId);
+
+  if (deleteExercisesError) {
+    throw new Error(deleteExercisesError.message);
+  }
+
+  for (const exercise of data.exercises) {
+    const { data: planExercise, error: exerciseError } = await supabase
+      .from("plan_exercises")
+      .insert({
+        plan_id: planId,
+        exercise_name: exercise.exerciseName,
+        order_index: exercise.order,
+      })
+      .select()
+      .single();
+
+    if (exerciseError || !planExercise) {
+      throw new Error(exerciseError?.message || "Failed to recreate plan exercise");
+    }
+
+    const setsToInsert = exercise.sets.map((setItem) => ({
+      plan_exercise_id: planExercise.id,
+      set_number: setItem.setNumber,
+      target_reps: setItem.targetReps,
+      target_weight: setItem.targetWeight,
+    }));
+
+    const { error: setsError } = await supabase
+      .from("plan_sets")
+      .insert(setsToInsert);
+
+    if (setsError) {
+      throw new Error(setsError.message);
+    }
+  }
+
+  return await getWorkoutPlanById(planId);
+}
+
+export async function deleteWorkoutPlan(planId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from("workout_plans")
+    .delete()
+    .eq("id", planId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
   return true;
 }
 
-export function listWorkoutSessions(): WorkoutSession[] {
-  return workoutSessions;
+export async function createWorkoutSession(
+  data: CreateWorkoutSessionInput
+): Promise<WorkoutSession> {
+  const { data: session, error: sessionError } = await supabase
+    .from("workout_sessions")
+    .insert({
+      plan_id: data.planId,
+      performed_at: data.performedAt || new Date().toISOString(),
+      notes: data.notes,
+    })
+    .select()
+    .single();
+
+  if (sessionError || !session) {
+    throw new Error(sessionError?.message || "Failed to create workout session");
+  }
+
+  for (const exercise of data.exercises) {
+    const { data: sessionExercise, error: exerciseError } = await supabase
+      .from("session_exercises")
+      .insert({
+        session_id: session.id,
+        exercise_name: exercise.exerciseName,
+      })
+      .select()
+      .single();
+
+    if (exerciseError || !sessionExercise) {
+      throw new Error(exerciseError?.message || "Failed to create session exercise");
+    }
+
+    const setsToInsert = exercise.sets.map((setItem) => ({
+      session_exercise_id: sessionExercise.id,
+      set_number: setItem.setNumber,
+      actual_reps: setItem.actualReps,
+      actual_weight: setItem.actualWeight,
+    }));
+
+    const { error: setsError } = await supabase
+      .from("session_sets")
+      .insert(setsToInsert);
+
+    if (setsError) {
+      throw new Error(setsError.message);
+    }
+  }
+
+  return await getWorkoutSessionById(session.id) as WorkoutSession;
 }
 
-export function getWorkoutSessionById(sessionId: string): WorkoutSession | undefined {
-  return workoutSessions.find((session) => session.id === sessionId);
+export async function listWorkoutSessions(): Promise<WorkoutSession[]> {
+  const { data: sessions, error } = await supabase
+    .from("workout_sessions")
+    .select("*")
+    .order("performed_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const result: WorkoutSession[] = [];
+
+  for (const session of sessions || []) {
+    result.push(await buildWorkoutSession(session));
+  }
+
+  return result;
+}
+
+export async function getWorkoutSessionById(
+  sessionId: string
+): Promise<WorkoutSession | undefined> {
+  const { data: session, error } = await supabase
+    .from("workout_sessions")
+    .select("*")
+    .eq("id", sessionId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!session) {
+    return undefined;
+  }
+
+  return await buildWorkoutSession(session);
+}
+
+export async function getExerciseHistory(
+  exerciseName: string
+): Promise<{ exerciseName: string; history: ExerciseHistoryItem[] }> {
+  const { data: matchingExercises, error: exercisesError } = await supabase
+    .from("session_exercises")
+    .select("id, session_id, exercise_name")
+    .eq("exercise_name", exerciseName);
+
+  if (exercisesError) {
+    throw new Error(exercisesError.message);
+  }
+
+  const history: ExerciseHistoryItem[] = [];
+
+  for (const exercise of matchingExercises || []) {
+    const { data: session, error: sessionError } = await supabase
+      .from("workout_sessions")
+      .select("performed_at")
+      .eq("id", exercise.session_id)
+      .maybeSingle();
+
+    if (sessionError) {
+      throw new Error(sessionError.message);
+    }
+
+    const { data: sets, error: setsError } = await supabase
+      .from("session_sets")
+      .select("*")
+      .eq("session_exercise_id", exercise.id)
+      .order("set_number", { ascending: true });
+
+    if (setsError) {
+      throw new Error(setsError.message);
+    }
+
+    history.push({
+      performedAt: session?.performed_at || new Date().toISOString(),
+      sets: (sets || []).map((setItem) => ({
+        setNumber: setItem.set_number,
+        actualReps: setItem.actual_reps,
+        actualWeight: Number(setItem.actual_weight),
+      })),
+    });
+  }
+
+  history.sort(
+    (a, b) => new Date(b.performedAt).getTime() - new Date(a.performedAt).getTime()
+  );
+
+  return {
+    exerciseName,
+    history,
+  };
 }
