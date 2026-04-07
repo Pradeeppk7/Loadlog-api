@@ -395,6 +395,55 @@ export async function deleteWorkoutPlan(planId: string): Promise<boolean> {
     throw new Error(deleteExercisesError.message);
   }
 
+  const { data: sessions, error: sessionsError } = await supabase
+    .from("workout_sessions")
+    .select("id")
+    .eq("plan_id", planId);
+
+  if (sessionsError) {
+    throw new Error(sessionsError.message);
+  }
+
+  for (const session of sessions || []) {
+    const { data: sessionExercises, error: sessionExercisesError } = await supabase
+      .from("session_exercises")
+      .select("id")
+      .eq("session_id", session.id);
+
+    if (sessionExercisesError) {
+      throw new Error(sessionExercisesError.message);
+    }
+
+    for (const sessionExercise of sessionExercises || []) {
+      const { error: deleteSessionSetsError } = await supabase
+        .from("session_sets")
+        .delete()
+        .eq("session_exercise_id", sessionExercise.id);
+
+      if (deleteSessionSetsError) {
+        throw new Error(deleteSessionSetsError.message);
+      }
+    }
+
+    const { error: deleteSessionExercisesError } = await supabase
+      .from("session_exercises")
+      .delete()
+      .eq("session_id", session.id);
+
+    if (deleteSessionExercisesError) {
+      throw new Error(deleteSessionExercisesError.message);
+    }
+  }
+
+  const { error: deleteSessionsError } = await supabase
+    .from("workout_sessions")
+    .delete()
+    .eq("plan_id", planId);
+
+  if (deleteSessionsError) {
+    throw new Error(deleteSessionsError.message);
+  }
+
   const { error: deletePlanError } = await supabase
     .from("workout_plans")
     .delete()
