@@ -4,7 +4,14 @@ info:
   version: 1.0.0
 
 servers:
+  - url: /
+    description: Same-origin (Swagger UI served from this API)
+  - url: https://loadlog-api.onrender.com
+    description: Render production
   - url: http://localhost:3000
+    description: Local development (localhost)
+  - url: http://127.0.0.1:3000
+    description: Local development (loopback)
 
 paths:
   /workout-plans:
