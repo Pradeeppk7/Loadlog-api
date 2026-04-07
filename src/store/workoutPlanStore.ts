@@ -360,13 +360,48 @@ export async function updateWorkoutPlan(
 }
 
 export async function deleteWorkoutPlan(planId: string): Promise<boolean> {
-  const { error } = await supabase
+  const existing = await getWorkoutPlanById(planId);
+
+  if (!existing) {
+    return false;
+  }
+
+  const { data: exercises, error: exercisesError } = await supabase
+    .from("plan_exercises")
+    .select("id")
+    .eq("plan_id", planId);
+
+  if (exercisesError) {
+    throw new Error(exercisesError.message);
+  }
+
+  for (const exercise of exercises || []) {
+    const { error: deleteSetsError } = await supabase
+      .from("plan_sets")
+      .delete()
+      .eq("plan_exercise_id", exercise.id);
+
+    if (deleteSetsError) {
+      throw new Error(deleteSetsError.message);
+    }
+  }
+
+  const { error: deleteExercisesError } = await supabase
+    .from("plan_exercises")
+    .delete()
+    .eq("plan_id", planId);
+
+  if (deleteExercisesError) {
+    throw new Error(deleteExercisesError.message);
+  }
+
+  const { error: deletePlanError } = await supabase
     .from("workout_plans")
     .delete()
     .eq("id", planId);
 
-  if (error) {
-    throw new Error(error.message);
+  if (deletePlanError) {
+    throw new Error(deletePlanError.message);
   }
 
   return true;

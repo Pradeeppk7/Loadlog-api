@@ -53,14 +53,22 @@ export const workoutPlanHandlers = {
   },
 
   deleteWorkoutPlan: async (c: any, _req: any, res: any) => {
-    const { planId } = c.request.params;
-    const deleted = await deleteWorkoutPlanInStore(planId);
+    try {
+      const { planId } = c.request.params;
+      const deleted = await deleteWorkoutPlanInStore(planId);
 
-    if (!deleted) {
-      return res.status(404).json({ error: "Workout plan not found" });
+      if (!deleted) {
+        return res.status(404).json({ error: "Workout plan not found" });
+      }
+
+      return res.json({ message: "Deleted successfully" });
+    } catch (error: any) {
+      console.error("deleteWorkoutPlan error:", error);
+      return res.status(500).json({
+        error: "Failed to delete workout plan",
+        details: error.message,
+      });
     }
-
-    return res.json({ message: "Deleted successfully" });
   },
 
   getExerciseHistory: async (c: any, _req: any, res: any) => {
