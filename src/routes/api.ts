@@ -3,6 +3,9 @@ import YAML from "yamljs";
 import express from "express";
 import path from "path";
 import { workoutPlanHandlers } from "../handlers/workoutPlanHandlers";
+import { workoutSessionHandlers } from "../handlers/workoutSessionHandlers";
+import { exerciseHandlers } from "../handlers/exerciseHandlers";
+import { commonHandlers } from "../handlers/commonHandlers";
 
 const definitionPath = path.join(process.cwd(), "src", "openapi", "openapi.yaml");
 
@@ -12,6 +15,9 @@ const api = new OpenAPIBackend({
 });
 
 api.register(workoutPlanHandlers);
+api.register(workoutSessionHandlers);
+api.register(exerciseHandlers);
+api.register(commonHandlers);
 api.init();
 
 export const apiHandler = (req: express.Request, res: express.Response) => {
