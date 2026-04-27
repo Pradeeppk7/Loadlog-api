@@ -43,6 +43,8 @@ Edit `.env` with your Supabase credentials:
 ```env
 SUPABASE_URL=your-supabase-url
 SUPABASE_ANON_KEY=your-supabase-anon-key
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_MODEL=gemini-2.5-flash
 NODE_ENV=development
 PORT=3000
 ```
@@ -154,6 +156,8 @@ tests/                   # Test files
 |----------|-------------|----------|
 | `SUPABASE_URL` | Your Supabase project URL | Yes |
 | `SUPABASE_ANON_KEY` | Your Supabase anonymous key | Yes |
+| `GEMINI_API_KEY` | Gemini API key for coach chat | No |
+| `GEMINI_MODEL` | Gemini model name | No |
 | `NODE_ENV` | Environment (development/production) | No |
 | `PORT` | Server port | No (default: 3000) |
 
@@ -206,6 +210,8 @@ Required environment variables in `.env`:
 ```env
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MODEL=gemini-2.5-flash
 PORT=3000
 ```
 
@@ -216,9 +222,17 @@ List workout plans:
 ```graphql
 query {
   workoutPlans {
-    id
-    name
-    createdAt
+    items {
+      id
+      name
+      createdAt
+    }
+    pagination {
+      page
+      pageSize
+      totalItems
+      totalPages
+    }
   }
 }
 ```
@@ -227,9 +241,17 @@ Filter workout plans by partial name:
 
 ```graphql
 query {
-  workoutPlans(nameContains: "push") {
-    id
-    name
+  workoutPlans(nameContains: "push", page: 1, pageSize: 5) {
+    items {
+      id
+      name
+    }
+    pagination {
+      page
+      pageSize
+      totalItems
+      totalPages
+    }
   }
 }
 ```
@@ -238,10 +260,18 @@ List workout sessions for one plan:
 
 ```graphql
 query {
-  workoutSessions(planId: "plan-id-here") {
-    id
-    performedAt
-    notes
+  workoutSessions(planId: "plan-id-here", page: 1, pageSize: 5) {
+    items {
+      id
+      performedAt
+      notes
+    }
+    pagination {
+      page
+      pageSize
+      totalItems
+      totalPages
+    }
   }
 }
 ```

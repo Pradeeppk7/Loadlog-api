@@ -1,10 +1,16 @@
 import Joi from 'joi';
-import { CreateWorkoutPlanInput, CreateWorkoutSessionInput } from '../models/workoutPlanModels';
+import {
+  CreateUserInput,
+  CreateWorkoutPlanInput,
+  CreateWorkoutSessionInput,
+  UpdateUserInput,
+} from '../models/workoutPlanModels';
 import { CoachChatInput } from '../services/coachChatService';
 
 export const workoutPlanValidation = {
   create: Joi.object<CreateWorkoutPlanInput>({
     name: Joi.string().min(1).max(100).required(),
+    userId: Joi.string().uuid(),
     description: Joi.string().max(500).allow(''),
     exercises: Joi.array()
       .items(
@@ -29,6 +35,7 @@ export const workoutPlanValidation = {
 
   update: Joi.object<CreateWorkoutPlanInput>({
     name: Joi.string().min(1).max(100),
+    userId: Joi.string().uuid(),
     description: Joi.string().max(500).allow(''),
     exercises: Joi.array().items(
       Joi.object({
@@ -51,6 +58,7 @@ export const workoutPlanValidation = {
 
 export const workoutSessionValidation = {
   create: Joi.object<CreateWorkoutSessionInput>({
+    userId: Joi.string().uuid(),
     planId: Joi.string().uuid().required(),
     performedAt: Joi.date().iso().allow(null),
     notes: Joi.string().max(1000).allow(''),
@@ -77,6 +85,7 @@ export const workoutSessionValidation = {
 
 export const coachChatValidation = Joi.object<CoachChatInput>({
   message: Joi.string().trim().min(1).max(4000).required(),
+  userId: Joi.string().uuid(),
   history: Joi.array()
     .items(
       Joi.object({
@@ -91,8 +100,34 @@ export const coachChatValidation = Joi.object<CoachChatInput>({
     goal: Joi.string().trim().max(500),
     dietaryPreferences: Joi.string().trim().max(500),
     injuriesOrLimitations: Joi.string().trim().max(500),
+    experienceLevel: Joi.string().valid('beginner', 'intermediate', 'advanced'),
   }).default({}),
 });
+
+export const userValidation = {
+  create: Joi.object<CreateUserInput>({
+    name: Joi.string().trim().min(1).max(100).required(),
+    email: Joi.string().trim().email().required(),
+    age: Joi.number().integer().min(13).max(120),
+    coachProfile: Joi.object({
+      goal: Joi.string().trim().max(500),
+      dietaryPreferences: Joi.string().trim().max(500),
+      injuriesOrLimitations: Joi.string().trim().max(500),
+      experienceLevel: Joi.string().valid('beginner', 'intermediate', 'advanced'),
+    }),
+  }),
+  update: Joi.object<UpdateUserInput>({
+    name: Joi.string().trim().min(1).max(100),
+    email: Joi.string().trim().email(),
+    age: Joi.number().integer().min(13).max(120),
+    coachProfile: Joi.object({
+      goal: Joi.string().trim().max(500),
+      dietaryPreferences: Joi.string().trim().max(500),
+      injuriesOrLimitations: Joi.string().trim().max(500),
+      experienceLevel: Joi.string().valid('beginner', 'intermediate', 'advanced'),
+    }),
+  }),
+};
 
 export const validateInput = <T>(schema: Joi.ObjectSchema<T>, data: unknown): T => {
   const validationResult: Joi.ValidationResult<T> = schema.validate(data, { abortEarly: false });

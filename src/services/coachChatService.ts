@@ -1,7 +1,8 @@
 import config from '../config';
-import { WorkoutPlan, WorkoutSession } from '../models/workoutPlanModels';
+import { CoachProfile, WorkoutPlan, WorkoutSession } from '../models/workoutPlanModels';
 import { listWorkoutPlansFiltered } from '../store/workoutPlanStore';
 import { listWorkoutSessionsFiltered } from '../store/workoutSessionStore';
+import { getUserById } from '../store/userStore';
 import logger from '../utils/logger';
 
 export type ChatRole = 'user' | 'assistant';
@@ -11,15 +12,9 @@ export interface ChatMessage {
   content: string;
 }
 
-export interface CoachProfile {
-  name?: string;
-  goal?: string;
-  dietaryPreferences?: string;
-  injuriesOrLimitations?: string;
-}
-
 export interface CoachChatInput {
   message: string;
+  userId?: string;
   history?: ChatMessage[];
   profile?: CoachProfile;
 }
@@ -78,11 +73,11 @@ function formatSessionSummary(session: WorkoutSession): string {
   return `Session ${session.id} on ${session.performedAt} for plan ${session.planId}: ${exercises}`;
 }
 
-async function getTrainingContext(): Promise<string> {
+async function getTrainingContext(userId?: string): Promise<string> {
   try {
     const [plans, sessions] = await Promise.all([
-      listWorkoutPlansFiltered(),
-      listWorkoutSessionsFiltered(),
+      listWorkoutPlansFiltered(userId ? { userId } : {}),
+      listWorkoutSessionsFiltered(userId ? { userId } : {}),
     ]);
 
     const recentPlans = plans.slice(0, 3).map(formatPlanSummary);
@@ -102,9 +97,13 @@ async function getTrainingContext(): Promise<string> {
   }
 }
 
-function buildSystemPrompt(profile: CoachProfile | undefined, trainingContext: string): string {
+function buildSystemPrompt(
+  userName: string | undefined,
+  profile: CoachProfile | undefined,
+  trainingContext: string
+): string {
   const profileLines = [
-    profile?.name ? `Customer name: ${profile.name}` : undefined,
+    userName ? `Customer name: ${userName}` : undefined,
     profile?.goal ? `Primary goal: ${profile.goal}` : undefined,
     profile?.dietaryPreferences ? `Dietary preferences: ${profile.dietaryPreferences}` : undefined,
     profile?.injuriesOrLimitations
@@ -173,8 +172,13 @@ export async function getCoachChatReply(input: CoachChatInput): Promise<string> 
     throw new Error('GEMINI_API_KEY is not configured');
   }
 
-  const trainingContext = await getTrainingContext();
-  const systemPrompt = buildSystemPrompt(input.profile, trainingContext);
+  const storedUser = input.userId ? await getUserById(input.userId) : undefined;
+  const mergedProfile = {
+    ...(storedUser?.coachProfile || {}),
+    ...(input.profile || {}),
+  };
+  const trainingContext = await getTrainingContext(input.userId);
+  const systemPrompt = buildSystemPrompt(storedUser?.name, mergedProfile, trainingContext);
   const contents = buildConversation(input, systemPrompt);
 
   const response = await fetch(

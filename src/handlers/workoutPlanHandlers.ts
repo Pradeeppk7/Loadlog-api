@@ -1,5 +1,5 @@
 import {
-  listWorkoutPlans as listWorkoutPlansFromStore,
+  listWorkoutPlansPaginated as listWorkoutPlansPaginatedFromStore,
   createWorkoutPlan as createWorkoutPlanInStore,
   getWorkoutPlanById as getWorkoutPlanByIdFromStore,
   updateWorkoutPlan as updateWorkoutPlanInStore,
@@ -7,10 +7,24 @@ import {
 } from '../store/workoutPlanStore';
 import { CreateWorkoutPlanInput } from '../models/workoutPlanModels';
 import { ApiHandlerContext, ApiRequest, ApiResponse } from '../types/api';
+import { normalizePagination } from '../utils/pagination';
 
 export const workoutPlanHandlers = {
-  listWorkoutPlans: async (_c: ApiHandlerContext, _req: ApiRequest, res: ApiResponse) => {
-    return res.json(await listWorkoutPlansFromStore());
+  listWorkoutPlans: async (_c: ApiHandlerContext, req: ApiRequest, res: ApiResponse) => {
+    try {
+      const { page, pageSize } = normalizePagination({
+        ...(typeof req.query['page'] === 'string' ? { page: req.query['page'] } : {}),
+        ...(typeof req.query['pageSize'] === 'string' ? { pageSize: req.query['pageSize'] } : {}),
+      });
+
+      return res.json(await listWorkoutPlansPaginatedFromStore({ page, pageSize }));
+    } catch (error) {
+      const details = error instanceof Error ? error.message : 'Unknown error';
+      return res.status(400).json({
+        error: 'Invalid pagination parameters',
+        details,
+      });
+    }
   },
 
   createWorkoutPlan: async (

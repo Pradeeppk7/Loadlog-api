@@ -1,5 +1,11 @@
 import { supabase } from '../db/supabaseClient';
-import { WorkoutSession, CreateWorkoutSessionInput } from '../models/workoutPlanModels';
+import {
+  WorkoutSession,
+  CreateWorkoutSessionInput,
+  PaginatedResponse,
+  PaginationInput,
+} from '../models/workoutPlanModels';
+import { paginateItems } from '../utils/pagination';
 
 type SessionSetRow = {
   set_number: number;
@@ -9,6 +15,7 @@ type SessionSetRow = {
 
 type WorkoutSessionRow = {
   id: string;
+  user_id: string | null;
   plan_id: string;
   performed_at: string;
   notes: string | null;
@@ -69,6 +76,7 @@ async function buildWorkoutSession(session: WorkoutSessionRow): Promise<WorkoutS
 
   return {
     id: session.id,
+    ...(session.user_id ? { userId: session.user_id } : {}),
     planId: session.plan_id,
     performedAt: session.performed_at,
     exercises: formattedExercises,
@@ -82,6 +90,7 @@ export async function createWorkoutSession(
   const { data: session, error: sessionError } = await supabase
     .from('workout_sessions')
     .insert({
+      user_id: data.userId,
       plan_id: data.planId,
       performed_at: data.performedAt || new Date().toISOString(),
       notes: data.notes,
@@ -130,6 +139,7 @@ export async function listWorkoutSessions(): Promise<WorkoutSession[]> {
 
 export async function listWorkoutSessionsFiltered(filters?: {
   planId?: string;
+  userId?: string;
 }): Promise<WorkoutSession[]> {
   let query = supabase
     .from('workout_sessions')
@@ -138,6 +148,10 @@ export async function listWorkoutSessionsFiltered(filters?: {
 
   if (filters?.planId) {
     query = query.eq('plan_id', filters.planId);
+  }
+
+  if (filters?.userId) {
+    query = query.eq('user_id', filters.userId);
   }
 
   const { data: sessions, error } = await query;
@@ -153,6 +167,24 @@ export async function listWorkoutSessionsFiltered(filters?: {
   }
 
   return result;
+}
+
+export async function listWorkoutSessionsPaginated(filters?: {
+  planId?: string;
+  userId?: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<PaginatedResponse<WorkoutSession>> {
+  const sessions = await listWorkoutSessionsFiltered({
+    ...(filters?.planId ? { planId: filters.planId } : {}),
+    ...(filters?.userId ? { userId: filters.userId } : {}),
+  });
+  const paginationInput: PaginationInput = {
+    ...(filters?.page !== undefined ? { page: filters.page } : {}),
+    ...(filters?.pageSize !== undefined ? { pageSize: filters.pageSize } : {}),
+  };
+
+  return paginateItems(sessions, paginationInput);
 }
 
 export async function getWorkoutSessionById(

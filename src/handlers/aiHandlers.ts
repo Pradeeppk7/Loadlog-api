@@ -12,7 +12,7 @@ export const aiHandlers = {
 
       return res.status(200).json({
         reply,
-        model: 'gemini',
+        model: process.env['GEMINI_MODEL'] || 'gemini-2.5-flash',
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to generate coach response';

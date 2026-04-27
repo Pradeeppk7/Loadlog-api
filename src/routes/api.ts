@@ -7,6 +7,7 @@ import { workoutSessionHandlers } from '../handlers/workoutSessionHandlers';
 import { exerciseHandlers } from '../handlers/exerciseHandlers';
 import { commonHandlers } from '../handlers/commonHandlers';
 import { aiHandlers } from '../handlers/aiHandlers';
+import { userHandlers } from '../handlers/userHandlers';
 
 const definitionPath = path.join(process.cwd(), 'src', 'openapi', 'openapi.yaml');
 const definition = YAML.load(definitionPath) as Document;
@@ -20,6 +21,7 @@ api.register(workoutPlanHandlers);
 api.register(workoutSessionHandlers);
 api.register(exerciseHandlers);
 api.register(aiHandlers);
+api.register(userHandlers);
 api.register(commonHandlers);
 void api.init();
 

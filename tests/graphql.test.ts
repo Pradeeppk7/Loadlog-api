@@ -2,7 +2,7 @@ import { rootValue } from '../src/graphql/schema';
 
 // Mock the store functions
 jest.mock('../src/store/workoutPlanStore', () => ({
-  listWorkoutPlansFiltered: jest.fn(),
+  listWorkoutPlansPaginated: jest.fn(),
   getWorkoutPlanById: jest.fn(),
   createWorkoutPlan: jest.fn(),
   updateWorkoutPlan: jest.fn(),
@@ -10,7 +10,8 @@ jest.mock('../src/store/workoutPlanStore', () => ({
 }));
 
 jest.mock('../src/store/workoutSessionStore', () => ({
-  listWorkoutSessionsFiltered: jest.fn(),
+  listWorkoutSessionsPaginated: jest.fn(),
+  getWorkoutSessionById: jest.fn(),
   createWorkoutSession: jest.fn(),
 }));
 
@@ -18,8 +19,19 @@ jest.mock('../src/store/exerciseStore', () => ({
   getExerciseHistory: jest.fn(),
 }));
 
+jest.mock('../src/store/userStore', () => ({
+  listUsers: jest.fn(),
+  getUserById: jest.fn(),
+  createUser: jest.fn(),
+  updateUser: jest.fn(),
+}));
+
+jest.mock('../src/services/coachChatService', () => ({
+  getCoachChatReply: jest.fn(),
+}));
+
 import {
-  listWorkoutPlansFiltered,
+  listWorkoutPlansPaginated,
   getWorkoutPlanById,
   createWorkoutPlan,
   updateWorkoutPlan,
@@ -27,12 +39,14 @@ import {
 } from '../src/store/workoutPlanStore';
 
 import {
-  listWorkoutSessionsFiltered,
+  listWorkoutSessionsPaginated,
   createWorkoutSession,
 } from '../src/store/workoutSessionStore';
 
 import { getExerciseHistory } from '../src/store/exerciseStore';
-import { WorkoutPlan, WorkoutSession } from '../src/models/workoutPlanModels';
+import { createUser, getUserById, listUsers, updateUser } from '../src/store/userStore';
+import { getCoachChatReply } from '../src/services/coachChatService';
+import { User, WorkoutPlan, WorkoutSession } from '../src/models/workoutPlanModels';
 
 describe('GraphQL Resolvers', () => {
   beforeEach(() => {
@@ -40,6 +54,7 @@ describe('GraphQL Resolvers', () => {
   });
 
   const createPlanInput = {
+    userId: '11111111-1111-1111-1111-111111111111',
     name: 'Test Plan',
     description: 'Test description',
     exercises: [
@@ -53,6 +68,7 @@ describe('GraphQL Resolvers', () => {
 
   const workoutPlanFixture: WorkoutPlan = {
     id: '1',
+    userId: '11111111-1111-1111-1111-111111111111',
     name: 'Test Plan',
     description: 'Test description',
     exercises: [
@@ -68,6 +84,7 @@ describe('GraphQL Resolvers', () => {
   };
 
   const updatePlanInput = {
+    userId: '11111111-1111-1111-1111-111111111111',
     name: 'Updated Plan',
     exercises: [
       {
@@ -80,6 +97,7 @@ describe('GraphQL Resolvers', () => {
 
   const updatedWorkoutPlanFixture: WorkoutPlan = {
     id: '1',
+    userId: '11111111-1111-1111-1111-111111111111',
     name: 'Updated Plan',
     exercises: [
       {
@@ -94,6 +112,7 @@ describe('GraphQL Resolvers', () => {
   };
 
   const createSessionInput = {
+    userId: '11111111-1111-1111-1111-111111111111',
     planId: '11111111-1111-1111-1111-111111111111',
     performedAt: '2024-01-01T00:00:00Z',
     exercises: [
@@ -106,6 +125,7 @@ describe('GraphQL Resolvers', () => {
 
   const workoutSessionFixture: WorkoutSession = {
     id: '1',
+    userId: '11111111-1111-1111-1111-111111111111',
     planId: '11111111-1111-1111-1111-111111111111',
     performedAt: '2024-01-01T00:00:00Z',
     exercises: [
@@ -116,17 +136,72 @@ describe('GraphQL Resolvers', () => {
     ],
   };
 
+  const userFixture: User = {
+    id: '11111111-1111-1111-1111-111111111111',
+    name: 'Pradeep',
+    email: 'pradeep@example.com',
+    age: 24,
+    coachProfile: {
+      goal: 'Build muscle',
+      dietaryPreferences: 'High protein',
+      injuriesOrLimitations: 'None',
+      experienceLevel: 'intermediate',
+    },
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+  };
+
+  describe('users', () => {
+    it('should return users', async () => {
+      (listUsers as jest.MockedFunction<typeof listUsers>).mockResolvedValue([userFixture]);
+
+      const result = await rootValue.users();
+
+      expect(listUsers).toHaveBeenCalled();
+      expect(result).toEqual([userFixture]);
+    });
+  });
+
+  describe('user', () => {
+    it('should return a user by id', async () => {
+      (getUserById as jest.MockedFunction<typeof getUserById>).mockResolvedValue(userFixture);
+
+      const result = await rootValue.user({ userId: userFixture.id });
+
+      expect(getUserById).toHaveBeenCalledWith(userFixture.id);
+      expect(result).toEqual(userFixture);
+    });
+  });
+
   describe('workoutPlans', () => {
     it('should return filtered workout plans', async () => {
-      const mockPlans = [workoutPlanFixture];
+      const mockPlans = {
+        items: [workoutPlanFixture],
+        pagination: {
+          page: 2,
+          pageSize: 1,
+          totalItems: 3,
+          totalPages: 3,
+        },
+      };
 
       (
-        listWorkoutPlansFiltered as jest.MockedFunction<typeof listWorkoutPlansFiltered>
+        listWorkoutPlansPaginated as jest.MockedFunction<typeof listWorkoutPlansPaginated>
       ).mockResolvedValue(mockPlans);
 
-      const result = await rootValue.workoutPlans({ nameContains: 'test' });
+      const result = await rootValue.workoutPlans({
+        nameContains: 'test',
+        userId: userFixture.id,
+        page: 2,
+        pageSize: 1,
+      });
 
-      expect(listWorkoutPlansFiltered).toHaveBeenCalledWith({ nameContains: 'test' });
+      expect(listWorkoutPlansPaginated).toHaveBeenCalledWith({
+        nameContains: 'test',
+        userId: userFixture.id,
+        page: 2,
+        pageSize: 1,
+      });
       expect(result).toEqual(mockPlans);
     });
   });
@@ -228,22 +303,41 @@ describe('GraphQL Resolvers', () => {
 
   describe('workoutSessions', () => {
     it('should return filtered workout sessions', async () => {
-      const mockSessions: WorkoutSession[] = [
-        {
-          id: '1',
-          planId: '11111111-1111-1111-1111-111111111111',
-          performedAt: '2024-01-01T00:00:00Z',
-          exercises: [],
+      const mockSessions = {
+        items: [
+          {
+            id: '1',
+            userId: userFixture.id,
+            planId: '11111111-1111-1111-1111-111111111111',
+            performedAt: '2024-01-01T00:00:00Z',
+            exercises: [],
+          },
+        ],
+        pagination: {
+          page: 1,
+          pageSize: 5,
+          totalItems: 1,
+          totalPages: 1,
         },
-      ];
+      };
 
       (
-        listWorkoutSessionsFiltered as jest.MockedFunction<typeof listWorkoutSessionsFiltered>
+        listWorkoutSessionsPaginated as jest.MockedFunction<typeof listWorkoutSessionsPaginated>
       ).mockResolvedValue(mockSessions);
 
-      const result = await rootValue.workoutSessions({ planId: '1' });
+      const result = await rootValue.workoutSessions({
+        planId: '1',
+        userId: userFixture.id,
+        page: 1,
+        pageSize: 5,
+      });
 
-      expect(listWorkoutSessionsFiltered).toHaveBeenCalledWith({ planId: '1' });
+      expect(listWorkoutSessionsPaginated).toHaveBeenCalledWith({
+        planId: '1',
+        userId: userFixture.id,
+        page: 1,
+        pageSize: 5,
+      });
       expect(result).toEqual(mockSessions);
     });
   });
@@ -282,6 +376,66 @@ describe('GraphQL Resolvers', () => {
 
       expect(getExerciseHistory).toHaveBeenCalledWith('Bench Press');
       expect(result).toEqual(mockHistory);
+    });
+  });
+
+  describe('createUser', () => {
+    it('should create a user', async () => {
+      (createUser as jest.MockedFunction<typeof createUser>).mockResolvedValue(userFixture);
+
+      const result = await rootValue.createUser({
+        input: {
+          name: 'Pradeep',
+          email: 'pradeep@example.com',
+          age: 24,
+          coachProfile: {
+            goal: 'Build muscle',
+            experienceLevel: 'intermediate',
+          },
+        },
+      });
+
+      expect(createUser).toHaveBeenCalled();
+      expect(result).toEqual(userFixture);
+    });
+  });
+
+  describe('updateUser', () => {
+    it('should update a user', async () => {
+      (updateUser as jest.MockedFunction<typeof updateUser>).mockResolvedValue(userFixture);
+
+      const result = await rootValue.updateUser({
+        userId: userFixture.id,
+        input: {
+          name: 'Pradeep Kumar',
+        },
+      });
+
+      expect(updateUser).toHaveBeenCalled();
+      expect(result).toEqual(userFixture);
+    });
+  });
+
+  describe('coachChat', () => {
+    it('should return a coach reply', async () => {
+      (getCoachChatReply as jest.MockedFunction<typeof getCoachChatReply>).mockResolvedValue(
+        'Keep protein high and train consistently.'
+      );
+
+      const result = await rootValue.coachChat({
+        input: {
+          message: 'How do I build muscle?',
+          userId: userFixture.id,
+        },
+      });
+
+      expect(getCoachChatReply).toHaveBeenCalledWith({
+        message: 'How do I build muscle?',
+        userId: userFixture.id,
+        history: [],
+        profile: {},
+      });
+      expect(result.reply).toContain('protein');
     });
   });
 });

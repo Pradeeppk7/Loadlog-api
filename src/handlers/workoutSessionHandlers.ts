@@ -1,10 +1,11 @@
 import {
   createWorkoutSession as createWorkoutSessionInStore,
-  listWorkoutSessions as listWorkoutSessionsFromStore,
+  listWorkoutSessionsPaginated as listWorkoutSessionsPaginatedFromStore,
   getWorkoutSessionById as getWorkoutSessionByIdFromStore,
 } from '../store/workoutSessionStore';
 import { CreateWorkoutSessionInput } from '../models/workoutPlanModels';
 import { ApiHandlerContext, ApiRequest, ApiResponse } from '../types/api';
+import { normalizePagination } from '../utils/pagination';
 
 export const workoutSessionHandlers = {
   createWorkoutSession: async (
@@ -17,8 +18,21 @@ export const workoutSessionHandlers = {
     return res.status(201).json(created);
   },
 
-  listWorkoutSessions: async (_c: ApiHandlerContext, _req: ApiRequest, res: ApiResponse) => {
-    return res.json(await listWorkoutSessionsFromStore());
+  listWorkoutSessions: async (_c: ApiHandlerContext, req: ApiRequest, res: ApiResponse) => {
+    try {
+      const { page, pageSize } = normalizePagination({
+        ...(typeof req.query['page'] === 'string' ? { page: req.query['page'] } : {}),
+        ...(typeof req.query['pageSize'] === 'string' ? { pageSize: req.query['pageSize'] } : {}),
+      });
+
+      return res.json(await listWorkoutSessionsPaginatedFromStore({ page, pageSize }));
+    } catch (error) {
+      const details = error instanceof Error ? error.message : 'Unknown error';
+      return res.status(400).json({
+        error: 'Invalid pagination parameters',
+        details,
+      });
+    }
   },
 
   getWorkoutSessionById: async (

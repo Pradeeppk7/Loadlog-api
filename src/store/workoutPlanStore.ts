@@ -1,5 +1,11 @@
 import { supabase } from '../db/supabaseClient';
-import { WorkoutPlan, CreateWorkoutPlanInput } from '../models/workoutPlanModels';
+import {
+  WorkoutPlan,
+  CreateWorkoutPlanInput,
+  PaginatedResponse,
+  PaginationInput,
+} from '../models/workoutPlanModels';
+import { paginateItems } from '../utils/pagination';
 
 type PlanSetRow = {
   set_number: number;
@@ -9,6 +15,7 @@ type PlanSetRow = {
 
 type WorkoutPlanRow = {
   id: string;
+  user_id: string | null;
   name: string;
   description: string | null;
   created_at: string;
@@ -80,6 +87,7 @@ async function buildWorkoutPlan(plan: WorkoutPlanRow): Promise<WorkoutPlan> {
 
   return {
     id: plan.id,
+    ...(plan.user_id ? { userId: plan.user_id } : {}),
     name: plan.name,
     exercises: formattedExercises,
     createdAt: plan.created_at,
@@ -94,11 +102,16 @@ export async function listWorkoutPlans(): Promise<WorkoutPlan[]> {
 
 export async function listWorkoutPlansFiltered(filters?: {
   nameContains?: string;
+  userId?: string;
 }): Promise<WorkoutPlan[]> {
   let query = supabase.from('workout_plans').select('*').order('created_at', { ascending: true });
 
   if (filters?.nameContains) {
     query = query.ilike('name', `%${filters.nameContains}%`);
+  }
+
+  if (filters?.userId) {
+    query = query.eq('user_id', filters.userId);
   }
 
   const { data: plans, error } = await query;
@@ -116,10 +129,30 @@ export async function listWorkoutPlansFiltered(filters?: {
   return result;
 }
 
+export async function listWorkoutPlansPaginated(filters?: {
+  nameContains?: string;
+  userId?: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<PaginatedResponse<WorkoutPlan>> {
+  const plans = await listWorkoutPlansFiltered({
+    ...(filters?.nameContains ? { nameContains: filters.nameContains } : {}),
+    ...(filters?.userId ? { userId: filters.userId } : {}),
+  });
+
+  const paginationInput: PaginationInput = {
+    ...(filters?.page !== undefined ? { page: filters.page } : {}),
+    ...(filters?.pageSize !== undefined ? { pageSize: filters.pageSize } : {}),
+  };
+
+  return paginateItems(plans, paginationInput);
+}
+
 export async function createWorkoutPlan(data: CreateWorkoutPlanInput): Promise<WorkoutPlan> {
   const { data: plan, error: planError } = await supabase
     .from('workout_plans')
     .insert({
+      user_id: data.userId,
       name: data.name,
       description: data.description,
     })

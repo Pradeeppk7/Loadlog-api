@@ -3,17 +3,26 @@ import {
   createWorkoutPlan,
   deleteWorkoutPlan,
   getWorkoutPlanById,
-  listWorkoutPlansFiltered,
+  listWorkoutPlansPaginated,
   updateWorkoutPlan,
 } from '../store/workoutPlanStore';
 import {
   createWorkoutSession,
   getWorkoutSessionById,
-  listWorkoutSessionsFiltered,
+  listWorkoutSessionsPaginated,
 } from '../store/workoutSessionStore';
 import { getExerciseHistory } from '../store/exerciseStore';
-import { CreateWorkoutPlanInput, CreateWorkoutSessionInput } from '../models/workoutPlanModels';
+import { createUser, getUserById, listUsers, updateUser } from '../store/userStore';
+import { getCoachChatReply } from '../services/coachChatService';
 import {
+  CreateUserInput,
+  CreateWorkoutPlanInput,
+  CreateWorkoutSessionInput,
+  UpdateUserInput,
+} from '../models/workoutPlanModels';
+import {
+  coachChatValidation,
+  userValidation,
   validateInput,
   workoutPlanValidation,
   workoutSessionValidation,
@@ -36,6 +45,7 @@ export const schema = buildSchema(`
 
   type WorkoutPlan {
     id: ID!
+    userId: ID
     name: String!
     description: String
     exercises: [PlanExercise!]!
@@ -56,6 +66,7 @@ export const schema = buildSchema(`
   }
 
   input CreateWorkoutPlanInput {
+    userId: ID
     name: String!
     description: String
     exercises: [CreatePlanExerciseInput!]!
@@ -74,6 +85,7 @@ export const schema = buildSchema(`
 
   type WorkoutSession {
     id: ID!
+    userId: ID
     planId: ID!
     performedAt: String!
     notes: String
@@ -92,10 +104,66 @@ export const schema = buildSchema(`
   }
 
   input CreateWorkoutSessionInput {
+    userId: ID
     planId: ID!
     performedAt: String
     notes: String
     exercises: [CreateSessionExerciseInput!]!
+  }
+
+  type CoachProfile {
+    goal: String
+    dietaryPreferences: String
+    injuriesOrLimitations: String
+    experienceLevel: String
+  }
+
+  type User {
+    id: ID!
+    name: String!
+    email: String!
+    age: Int
+    coachProfile: CoachProfile
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  input CoachProfileInput {
+    goal: String
+    dietaryPreferences: String
+    injuriesOrLimitations: String
+    experienceLevel: String
+  }
+
+  input CreateUserInput {
+    name: String!
+    email: String!
+    age: Int
+    coachProfile: CoachProfileInput
+  }
+
+  input UpdateUserInput {
+    name: String
+    email: String
+    age: Int
+    coachProfile: CoachProfileInput
+  }
+
+  input CoachChatMessageInput {
+    role: String!
+    content: String!
+  }
+
+  input CoachChatInput {
+    message: String!
+    userId: ID
+    history: [CoachChatMessageInput!]
+    profile: CoachProfileInput
+  }
+
+  type CoachChatPayload {
+    reply: String!
+    model: String!
   }
 
   type ExerciseHistorySet {
@@ -118,19 +186,41 @@ export const schema = buildSchema(`
     success: Boolean!
   }
 
+  type PaginationMetadata {
+    page: Int!
+    pageSize: Int!
+    totalItems: Int!
+    totalPages: Int!
+  }
+
+  type WorkoutPlanPage {
+    items: [WorkoutPlan!]!
+    pagination: PaginationMetadata!
+  }
+
+  type WorkoutSessionPage {
+    items: [WorkoutSession!]!
+    pagination: PaginationMetadata!
+  }
+
   type Query {
-    workoutPlans(nameContains: String): [WorkoutPlan!]!
+    users: [User!]!
+    user(userId: ID!): User
+    workoutPlans(nameContains: String, userId: ID, page: Int, pageSize: Int): WorkoutPlanPage!
     workoutPlan(planId: ID!): WorkoutPlan
-    workoutSessions(planId: ID): [WorkoutSession!]!
+    workoutSessions(planId: ID, userId: ID, page: Int, pageSize: Int): WorkoutSessionPage!
     workoutSession(sessionId: ID!): WorkoutSession
     exerciseHistory(exerciseName: String!): ExerciseHistory!
   }
 
   type Mutation {
+    createUser(input: CreateUserInput!): User!
+    updateUser(userId: ID!, input: UpdateUserInput!): User!
     createWorkoutPlan(input: CreateWorkoutPlanInput!): WorkoutPlan!
     updateWorkoutPlan(planId: ID!, input: CreateWorkoutPlanInput!): WorkoutPlan!
     deleteWorkoutPlan(planId: ID!): DeleteWorkoutPlanPayload!
     createWorkoutSession(input: CreateWorkoutSessionInput!): WorkoutSession!
+    coachChat(input: CoachChatInput!): CoachChatPayload!
   }
 `);
 
@@ -154,12 +244,52 @@ function databaseError(message: string): never {
 }
 
 export const rootValue = {
-  workoutPlans: async ({ nameContains }: { nameContains?: string }) => {
+  users: async () => {
     try {
-      logger.debug('Fetching workout plans', { nameContains });
-      return await listWorkoutPlansFiltered(nameContains ? { nameContains } : {});
+      logger.debug('Fetching users');
+      return await listUsers();
     } catch (error) {
-      logger.error('Error fetching workout plans', { error, nameContains });
+      logger.error('Error fetching users', { error });
+      databaseError('Failed to fetch users');
+    }
+  },
+
+  user: async ({ userId }: { userId: string }) => {
+    try {
+      logger.debug('Fetching user', { userId });
+      const user = await getUserById(userId);
+      if (!user) {
+        notFound('User not found');
+      }
+      return user;
+    } catch (error) {
+      if (error instanceof GraphQLError) throw error;
+      logger.error('Error fetching user', { error, userId });
+      databaseError('Failed to fetch user');
+    }
+  },
+
+  workoutPlans: async ({
+    nameContains,
+    userId,
+    page,
+    pageSize,
+  }: {
+    nameContains?: string;
+    userId?: string;
+    page?: number;
+    pageSize?: number;
+  }) => {
+    try {
+      logger.debug('Fetching workout plans', { nameContains, userId, page, pageSize });
+      return await listWorkoutPlansPaginated({
+        ...(nameContains ? { nameContains } : {}),
+        ...(userId ? { userId } : {}),
+        ...(page !== undefined ? { page } : {}),
+        ...(pageSize !== undefined ? { pageSize } : {}),
+      });
+    } catch (error) {
+      logger.error('Error fetching workout plans', { error, nameContains, userId, page, pageSize });
       databaseError('Failed to fetch workout plans');
     }
   },
@@ -179,12 +309,27 @@ export const rootValue = {
     }
   },
 
-  workoutSessions: async ({ planId }: { planId?: string }) => {
+  workoutSessions: async ({
+    planId,
+    userId,
+    page,
+    pageSize,
+  }: {
+    planId?: string;
+    userId?: string;
+    page?: number;
+    pageSize?: number;
+  }) => {
     try {
-      logger.debug('Fetching workout sessions', { planId });
-      return await listWorkoutSessionsFiltered(planId ? { planId } : {});
+      logger.debug('Fetching workout sessions', { planId, userId, page, pageSize });
+      return await listWorkoutSessionsPaginated({
+        ...(planId ? { planId } : {}),
+        ...(userId ? { userId } : {}),
+        ...(page !== undefined ? { page } : {}),
+        ...(pageSize !== undefined ? { pageSize } : {}),
+      });
     } catch (error) {
-      logger.error('Error fetching workout sessions', { error, planId });
+      logger.error('Error fetching workout sessions', { error, planId, userId, page, pageSize });
       databaseError('Failed to fetch workout sessions');
     }
   },
@@ -294,6 +439,56 @@ export const rootValue = {
       }
       logger.error('Error creating workout session', { error, input });
       databaseError('Failed to create workout session');
+    }
+  },
+
+  createUser: async ({ input }: { input: unknown }) => {
+    try {
+      const validatedInput = validateInput<CreateUserInput>(userValidation.create, input);
+      return await createUser(validatedInput);
+    } catch (error) {
+      if (error instanceof GraphQLError) throw error;
+      if (error instanceof Error && error.message.includes('Validation error')) {
+        validationError(error.message);
+      }
+      logger.error('Error creating user', { error, input });
+      databaseError('Failed to create user');
+    }
+  },
+
+  updateUser: async ({ userId, input }: { userId: string; input: unknown }) => {
+    try {
+      const validatedInput = validateInput<UpdateUserInput>(userValidation.update, input);
+      const user = await updateUser(userId, validatedInput);
+      if (!user) {
+        notFound('User not found');
+      }
+      return user;
+    } catch (error) {
+      if (error instanceof GraphQLError) throw error;
+      if (error instanceof Error && error.message.includes('Validation error')) {
+        validationError(error.message);
+      }
+      logger.error('Error updating user', { error, userId, input });
+      databaseError('Failed to update user');
+    }
+  },
+
+  coachChat: async ({ input }: { input: unknown }) => {
+    try {
+      const validatedInput = validateInput(coachChatValidation, input);
+      const reply = await getCoachChatReply(validatedInput);
+      return {
+        reply,
+        model: process.env['GEMINI_MODEL'] || 'gemini-2.5-flash',
+      };
+    } catch (error) {
+      if (error instanceof GraphQLError) throw error;
+      if (error instanceof Error && error.message.includes('Validation error')) {
+        validationError(error.message);
+      }
+      logger.error('Error generating coach chat reply', { error, input });
+      databaseError('Failed to generate coach chat reply');
     }
   },
 };

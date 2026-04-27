@@ -14,18 +14,156 @@ servers:
     description: Local development (loopback)
 
 paths:
-  /workout-plans:
+  /users:
     get:
-      operationId: listWorkoutPlans
+      operationId: listUsers
       responses:
         '200':
-          description: List of workout plans
+          description: List of users
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/WorkoutPlan'
+                  $ref: '#/components/schemas/User'
+    post:
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserInput'
+      responses:
+        '201':
+          description: Created user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /users/{userId}:
+    get:
+      operationId: getUserById
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Single user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+    put:
+      operationId: updateUser
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserInput'
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /users/{userId}/workout-plans:
+    get:
+      operationId: listUserWorkoutPlans
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Paginated list of a user's workout plans
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedWorkoutPlansResponse'
+
+  /users/{userId}/workout-sessions:
+    get:
+      operationId: listUserWorkoutSessions
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Paginated list of a user's workout sessions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedWorkoutSessionsResponse'
+
+  /workout-plans:
+    get:
+      operationId: listWorkoutPlans
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Paginated list of workout plans
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedWorkoutPlansResponse'
 
     post:
       operationId: createWorkoutPlan
@@ -110,15 +248,27 @@ paths:
   /workout-sessions:
     get:
       operationId: listWorkoutSessions
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
       responses:
         '200':
-          description: List of workout sessions
+          description: Paginated list of workout sessions
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/WorkoutSession'
+                $ref: '#/components/schemas/PaginatedWorkoutSessionsResponse'
 
     post:
       operationId: createWorkoutSession
@@ -173,6 +323,48 @@ paths:
   
 components:
   schemas:
+    PaginationMetadata:
+      type: object
+      required:
+        - page
+        - pageSize
+        - totalItems
+        - totalPages
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalItems:
+          type: integer
+        totalPages:
+          type: integer
+
+    PaginatedWorkoutPlansResponse:
+      type: object
+      required:
+        - items
+        - pagination
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkoutPlan'
+        pagination:
+          $ref: '#/components/schemas/PaginationMetadata'
+
+    PaginatedWorkoutSessionsResponse:
+      type: object
+      required:
+        - items
+        - pagination
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkoutSession'
+        pagination:
+          $ref: '#/components/schemas/PaginationMetadata'
 
     WorkoutPlan:
       type: object
@@ -186,6 +378,8 @@ components:
         id:
           type: string
         name:
+          type: string
+        userId:
           type: string
         description:
           type: string
@@ -243,6 +437,8 @@ components:
         name:
           type: string
           minLength: 1
+        userId:
+          type: string
         description:
           type: string
         exercises:
@@ -338,6 +534,8 @@ components:
       properties:
         id:
           type: string
+        userId:
+          type: string
         planId:
           type: string
         performedAt:
@@ -387,6 +585,8 @@ components:
         - exercises
       properties:
         planId:
+          type: string
+        userId:
           type: string
         performedAt:
           type: string
@@ -439,6 +639,8 @@ components:
         message:
           type: string
           minLength: 1
+        userId:
+          type: string
         history:
           type: array
           maxItems: 20
@@ -463,14 +665,75 @@ components:
     CoachProfile:
       type: object
       properties:
-        name:
-          type: string
         goal:
           type: string
         dietaryPreferences:
           type: string
         injuriesOrLimitations:
           type: string
+        experienceLevel:
+          type: string
+          enum: [beginner, intermediate, advanced]
+
+    User:
+      type: object
+      required:
+        - id
+        - name
+        - email
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        age:
+          type: integer
+        coachProfile:
+          $ref: '#/components/schemas/CoachProfile'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateUserInput:
+      type: object
+      required:
+        - name
+        - email
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        age:
+          type: integer
+          minimum: 13
+        coachProfile:
+          $ref: '#/components/schemas/CoachProfile'
+
+    UpdateUserInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        age:
+          type: integer
+          minimum: 13
+        coachProfile:
+          $ref: '#/components/schemas/CoachProfile'
 
     CoachChatResponse:
       type: object

@@ -13,6 +13,7 @@ type PlanExercise = {
 
 export type WorkoutPlan = {
   id: string;
+  userId?: string;
   name: string;
   description?: string;
   exercises: PlanExercise[];
@@ -33,6 +34,7 @@ export type CreatePlanExerciseInput = {
 };
 
 export type CreateWorkoutPlanInput = {
+  userId?: string;
   name: string;
   description?: string;
   exercises: CreatePlanExerciseInput[];
@@ -51,6 +53,7 @@ type SessionExercise = {
 
 export type WorkoutSession = {
   id: string;
+  userId?: string;
   planId: string;
   performedAt: string;
   notes?: string;
@@ -69,6 +72,7 @@ export type CreateSessionExerciseInput = {
 };
 
 export type CreateWorkoutSessionInput = {
+  userId?: string;
   planId: string;
   performedAt?: string;
   notes?: string;
@@ -89,4 +93,52 @@ type ExerciseHistoryItem = {
 export type ExerciseHistory = {
   exerciseName: string;
   history: ExerciseHistoryItem[];
+};
+
+export type CoachProfile = {
+  goal?: string;
+  dietaryPreferences?: string;
+  injuriesOrLimitations?: string;
+  experienceLevel?: 'beginner' | 'intermediate' | 'advanced';
+};
+
+export type User = {
+  id: string;
+  name: string;
+  email: string;
+  age?: number;
+  coachProfile?: CoachProfile;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateUserInput = {
+  name: string;
+  email: string;
+  age?: number;
+  coachProfile?: CoachProfile;
+};
+
+export type UpdateUserInput = {
+  name?: string;
+  email?: string;
+  age?: number;
+  coachProfile?: CoachProfile;
+};
+
+export type PaginationInput = {
+  page?: number;
+  pageSize?: number;
+};
+
+export type PaginationMetadata = {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+};
+
+export type PaginatedResponse<T> = {
+  items: T[];
+  pagination: PaginationMetadata;
 };
