@@ -2,11 +2,11 @@ import {
   createWorkoutSession as createWorkoutSessionInStore,
   listWorkoutSessions as listWorkoutSessionsFromStore,
   getWorkoutSessionById as getWorkoutSessionByIdFromStore,
-} from "../store/workoutSessionStore";
+} from '../store/workoutSessionStore';
 
 export const workoutSessionHandlers = {
   createWorkoutSession: async (c: any, _req: any, res: any) => {
-    const body = c.request.requestBody as any;
+    const body = c.request.requestBody;
     const created = await createWorkoutSessionInStore(body);
     return res.status(201).json(created);
   },
@@ -20,7 +20,7 @@ export const workoutSessionHandlers = {
     const session = await getWorkoutSessionByIdFromStore(sessionId);
 
     if (!session) {
-      return res.status(404).json({ error: "Workout session not found" });
+      return res.status(404).json({ error: 'Workout session not found' });
     }
 
     return res.json(session);

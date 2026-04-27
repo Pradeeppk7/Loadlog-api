@@ -1,5 +1,5 @@
-import { supabase } from "../db/supabaseClient";
-import { ExerciseHistory } from "../models/workoutPlanModels";
+import { supabase } from '../db/supabaseClient';
+import { ExerciseHistory } from '../models/workoutPlanModels';
 
 type ExerciseHistorySet = {
   setNumber: number;
@@ -12,13 +12,11 @@ type ExerciseHistoryItem = {
   sets: ExerciseHistorySet[];
 };
 
-export async function getExerciseHistory(
-  exerciseName: string
-): Promise<ExerciseHistory> {
+export async function getExerciseHistory(exerciseName: string): Promise<ExerciseHistory> {
   const { data: matchingExercises, error: exercisesError } = await supabase
-    .from("session_exercises")
-    .select("id, session_id, exercise_name")
-    .eq("exercise_name", exerciseName);
+    .from('session_exercises')
+    .select('id, session_id, exercise_name')
+    .eq('exercise_name', exerciseName);
 
   if (exercisesError) {
     throw new Error(exercisesError.message);
@@ -28,9 +26,9 @@ export async function getExerciseHistory(
 
   for (const exercise of matchingExercises || []) {
     const { data: session, error: sessionError } = await supabase
-      .from("workout_sessions")
-      .select("performed_at")
-      .eq("id", exercise.session_id)
+      .from('workout_sessions')
+      .select('performed_at')
+      .eq('id', exercise.session_id)
       .maybeSingle();
 
     if (sessionError) {
@@ -38,10 +36,10 @@ export async function getExerciseHistory(
     }
 
     const { data: sets, error: setsError } = await supabase
-      .from("session_sets")
-      .select("*")
-      .eq("session_exercise_id", exercise.id)
-      .order("set_number", { ascending: true });
+      .from('session_sets')
+      .select('*')
+      .eq('session_exercise_id', exercise.id)
+      .order('set_number', { ascending: true });
 
     if (setsError) {
       throw new Error(setsError.message);
@@ -49,7 +47,7 @@ export async function getExerciseHistory(
 
     history.push({
       performedAt: session?.performed_at || new Date().toISOString(),
-      sets: (sets || []).map((setItem) => ({
+      sets: (sets || []).map(setItem => ({
         setNumber: setItem.set_number,
         actualReps: setItem.actual_reps,
         actualWeight: Number(setItem.actual_weight),
@@ -57,9 +55,7 @@ export async function getExerciseHistory(
     });
   }
 
-  history.sort(
-    (a, b) => new Date(b.performedAt).getTime() - new Date(a.performedAt).getTime()
-  );
+  history.sort((a, b) => new Date(b.performedAt).getTime() - new Date(a.performedAt).getTime());
 
   return {
     exerciseName,

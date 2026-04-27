@@ -1,4 +1,4 @@
-import { getExerciseHistory as getExerciseHistoryFromStore } from "../store/exerciseStore";
+import { getExerciseHistory as getExerciseHistoryFromStore } from '../store/exerciseStore';
 
 export const exerciseHandlers = {
   getExerciseHistory: async (c: any, _req: any, res: any) => {

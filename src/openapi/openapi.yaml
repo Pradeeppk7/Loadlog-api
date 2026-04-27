@@ -152,6 +152,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WorkoutSession'
+
+  /ai/coach-chat:
+    post:
+      operationId: coachChat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoachChatRequest'
+      responses:
+        '200':
+          description: Coach chatbot response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoachChatResponse'
                 
   
 components:
@@ -413,3 +430,55 @@ components:
         actualWeight:
           type: number
           minimum: 0
+
+    CoachChatRequest:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          minLength: 1
+        history:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/CoachChatMessage'
+        profile:
+          $ref: '#/components/schemas/CoachProfile'
+
+    CoachChatMessage:
+      type: object
+      required:
+        - role
+        - content
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+          minLength: 1
+
+    CoachProfile:
+      type: object
+      properties:
+        name:
+          type: string
+        goal:
+          type: string
+        dietaryPreferences:
+          type: string
+        injuriesOrLimitations:
+          type: string
+
+    CoachChatResponse:
+      type: object
+      required:
+        - reply
+        - model
+      properties:
+        reply:
+          type: string
+        model:
+          type: string

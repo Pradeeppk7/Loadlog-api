@@ -1,5 +1,5 @@
-import { supabase } from "../db/supabaseClient";
-import { WorkoutPlan, CreateWorkoutPlanInput } from "../models/workoutPlanModels";
+import { supabase } from '../db/supabaseClient';
+import { WorkoutPlan, CreateWorkoutPlanInput } from '../models/workoutPlanModels';
 
 type PlanSet = {
   setNumber: number;
@@ -15,7 +15,7 @@ type PlanExercise = {
 };
 
 function mapPlanSets(rows: any[]): PlanSet[] {
-  return (rows || []).map((row) => ({
+  return (rows || []).map(row => ({
     setNumber: row.set_number,
     targetReps: row.target_reps,
     targetWeight: Number(row.target_weight),
@@ -24,10 +24,10 @@ function mapPlanSets(rows: any[]): PlanSet[] {
 
 async function buildWorkoutPlan(plan: any): Promise<WorkoutPlan> {
   const { data: exercises, error: exercisesError } = await supabase
-    .from("plan_exercises")
-    .select("*")
-    .eq("plan_id", plan.id)
-    .order("order_index", { ascending: true });
+    .from('plan_exercises')
+    .select('*')
+    .eq('plan_id', plan.id)
+    .order('order_index', { ascending: true });
 
   if (exercisesError) {
     throw new Error(exercisesError.message);
@@ -37,10 +37,10 @@ async function buildWorkoutPlan(plan: any): Promise<WorkoutPlan> {
 
   for (const exercise of exercises || []) {
     const { data: sets, error: setsError } = await supabase
-      .from("plan_sets")
-      .select("*")
-      .eq("plan_exercise_id", exercise.id)
-      .order("set_number", { ascending: true });
+      .from('plan_sets')
+      .select('*')
+      .eq('plan_exercise_id', exercise.id)
+      .order('set_number', { ascending: true });
 
     if (setsError) {
       throw new Error(setsError.message);
@@ -65,10 +65,19 @@ async function buildWorkoutPlan(plan: any): Promise<WorkoutPlan> {
 }
 
 export async function listWorkoutPlans(): Promise<WorkoutPlan[]> {
-  const { data: plans, error } = await supabase
-    .from("workout_plans")
-    .select("*")
-    .order("created_at", { ascending: true });
+  return listWorkoutPlansFiltered();
+}
+
+export async function listWorkoutPlansFiltered(filters?: {
+  nameContains?: string;
+}): Promise<WorkoutPlan[]> {
+  let query = supabase.from('workout_plans').select('*').order('created_at', { ascending: true });
+
+  if (filters?.nameContains) {
+    query = query.ilike('name', `%${filters.nameContains}%`);
+  }
+
+  const { data: plans, error } = await query;
 
   if (error) {
     throw new Error(error.message);
@@ -83,11 +92,9 @@ export async function listWorkoutPlans(): Promise<WorkoutPlan[]> {
   return result;
 }
 
-export async function createWorkoutPlan(
-  data: CreateWorkoutPlanInput
-): Promise<WorkoutPlan> {
+export async function createWorkoutPlan(data: CreateWorkoutPlanInput): Promise<WorkoutPlan> {
   const { data: plan, error: planError } = await supabase
-    .from("workout_plans")
+    .from('workout_plans')
     .insert({
       name: data.name,
       description: data.description,
@@ -96,12 +103,12 @@ export async function createWorkoutPlan(
     .single();
 
   if (planError || !plan) {
-    throw new Error(planError?.message || "Failed to create workout plan");
+    throw new Error(planError?.message || 'Failed to create workout plan');
   }
 
   for (const exercise of data.exercises) {
     const { data: planExercise, error: exerciseError } = await supabase
-      .from("plan_exercises")
+      .from('plan_exercises')
       .insert({
         plan_id: plan.id,
         exercise_name: exercise.exerciseName,
@@ -111,35 +118,31 @@ export async function createWorkoutPlan(
       .single();
 
     if (exerciseError || !planExercise) {
-      throw new Error(exerciseError?.message || "Failed to create plan exercise");
+      throw new Error(exerciseError?.message || 'Failed to create plan exercise');
     }
 
-    const setsToInsert = exercise.sets.map((setItem) => ({
+    const setsToInsert = exercise.sets.map(setItem => ({
       plan_exercise_id: planExercise.id,
       set_number: setItem.setNumber,
       target_reps: setItem.targetReps,
       target_weight: setItem.targetWeight,
     }));
 
-    const { error: setsError } = await supabase
-      .from("plan_sets")
-      .insert(setsToInsert);
+    const { error: setsError } = await supabase.from('plan_sets').insert(setsToInsert);
 
     if (setsError) {
       throw new Error(setsError.message);
     }
   }
 
-  return await getWorkoutPlanById(plan.id) as WorkoutPlan;
+  return (await getWorkoutPlanById(plan.id)) as WorkoutPlan;
 }
 
-export async function getWorkoutPlanById(
-  planId: string
-): Promise<WorkoutPlan | undefined> {
+export async function getWorkoutPlanById(planId: string): Promise<WorkoutPlan | undefined> {
   const { data: plan, error } = await supabase
-    .from("workout_plans")
-    .select("*")
-    .eq("id", planId)
+    .from('workout_plans')
+    .select('*')
+    .eq('id', planId)
     .maybeSingle();
 
   if (error) {
@@ -164,22 +167,22 @@ export async function updateWorkoutPlan(
   }
 
   const { error: updateError } = await supabase
-    .from("workout_plans")
+    .from('workout_plans')
     .update({
       name: data.name,
       description: data.description,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", planId);
+    .eq('id', planId);
 
   if (updateError) {
     throw new Error(updateError.message);
   }
 
   const { data: existingExercises, error: existingExercisesError } = await supabase
-    .from("plan_exercises")
-    .select("id")
-    .eq("plan_id", planId);
+    .from('plan_exercises')
+    .select('id')
+    .eq('plan_id', planId);
 
   if (existingExercisesError) {
     throw new Error(existingExercisesError.message);
@@ -187,9 +190,9 @@ export async function updateWorkoutPlan(
 
   for (const exercise of existingExercises || []) {
     const { error: deleteSetsError } = await supabase
-      .from("plan_sets")
+      .from('plan_sets')
       .delete()
-      .eq("plan_exercise_id", exercise.id);
+      .eq('plan_exercise_id', exercise.id);
 
     if (deleteSetsError) {
       throw new Error(deleteSetsError.message);
@@ -197,9 +200,9 @@ export async function updateWorkoutPlan(
   }
 
   const { error: deleteExercisesError } = await supabase
-    .from("plan_exercises")
+    .from('plan_exercises')
     .delete()
-    .eq("plan_id", planId);
+    .eq('plan_id', planId);
 
   if (deleteExercisesError) {
     throw new Error(deleteExercisesError.message);
@@ -207,7 +210,7 @@ export async function updateWorkoutPlan(
 
   for (const exercise of data.exercises) {
     const { data: planExercise, error: exerciseError } = await supabase
-      .from("plan_exercises")
+      .from('plan_exercises')
       .insert({
         plan_id: planId,
         exercise_name: exercise.exerciseName,
@@ -217,19 +220,17 @@ export async function updateWorkoutPlan(
       .single();
 
     if (exerciseError || !planExercise) {
-      throw new Error(exerciseError?.message || "Failed to recreate plan exercise");
+      throw new Error(exerciseError?.message || 'Failed to recreate plan exercise');
     }
 
-    const setsToInsert = exercise.sets.map((setItem) => ({
+    const setsToInsert = exercise.sets.map(setItem => ({
       plan_exercise_id: planExercise.id,
       set_number: setItem.setNumber,
       target_reps: setItem.targetReps,
       target_weight: setItem.targetWeight,
     }));
 
-    const { error: setsError } = await supabase
-      .from("plan_sets")
-      .insert(setsToInsert);
+    const { error: setsError } = await supabase.from('plan_sets').insert(setsToInsert);
 
     if (setsError) {
       throw new Error(setsError.message);
@@ -247,9 +248,9 @@ export async function deleteWorkoutPlan(planId: string): Promise<boolean> {
   }
 
   const { data: exercises, error: exercisesError } = await supabase
-    .from("plan_exercises")
-    .select("id")
-    .eq("plan_id", planId);
+    .from('plan_exercises')
+    .select('id')
+    .eq('plan_id', planId);
 
   if (exercisesError) {
     throw new Error(exercisesError.message);
@@ -257,9 +258,9 @@ export async function deleteWorkoutPlan(planId: string): Promise<boolean> {
 
   for (const exercise of exercises || []) {
     const { error: deleteSetsError } = await supabase
-      .from("plan_sets")
+      .from('plan_sets')
       .delete()
-      .eq("plan_exercise_id", exercise.id);
+      .eq('plan_exercise_id', exercise.id);
 
     if (deleteSetsError) {
       throw new Error(deleteSetsError.message);
@@ -267,18 +268,18 @@ export async function deleteWorkoutPlan(planId: string): Promise<boolean> {
   }
 
   const { error: deleteExercisesError } = await supabase
-    .from("plan_exercises")
+    .from('plan_exercises')
     .delete()
-    .eq("plan_id", planId);
+    .eq('plan_id', planId);
 
   if (deleteExercisesError) {
     throw new Error(deleteExercisesError.message);
   }
 
   const { data: sessions, error: sessionsError } = await supabase
-    .from("workout_sessions")
-    .select("id")
-    .eq("plan_id", planId);
+    .from('workout_sessions')
+    .select('id')
+    .eq('plan_id', planId);
 
   if (sessionsError) {
     throw new Error(sessionsError.message);
@@ -286,9 +287,9 @@ export async function deleteWorkoutPlan(planId: string): Promise<boolean> {
 
   for (const session of sessions || []) {
     const { data: sessionExercises, error: sessionExercisesError } = await supabase
-      .from("session_exercises")
-      .select("id")
-      .eq("session_id", session.id);
+      .from('session_exercises')
+      .select('id')
+      .eq('session_id', session.id);
 
     if (sessionExercisesError) {
       throw new Error(sessionExercisesError.message);
@@ -296,9 +297,9 @@ export async function deleteWorkoutPlan(planId: string): Promise<boolean> {
 
     for (const sessionExercise of sessionExercises || []) {
       const { error: deleteSessionSetsError } = await supabase
-        .from("session_sets")
+        .from('session_sets')
         .delete()
-        .eq("session_exercise_id", sessionExercise.id);
+        .eq('session_exercise_id', sessionExercise.id);
 
       if (deleteSessionSetsError) {
         throw new Error(deleteSessionSetsError.message);
@@ -306,9 +307,9 @@ export async function deleteWorkoutPlan(planId: string): Promise<boolean> {
     }
 
     const { error: deleteSessionExercisesError } = await supabase
-      .from("session_exercises")
+      .from('session_exercises')
       .delete()
-      .eq("session_id", session.id);
+      .eq('session_id', session.id);
 
     if (deleteSessionExercisesError) {
       throw new Error(deleteSessionExercisesError.message);
@@ -316,18 +317,15 @@ export async function deleteWorkoutPlan(planId: string): Promise<boolean> {
   }
 
   const { error: deleteSessionsError } = await supabase
-    .from("workout_sessions")
+    .from('workout_sessions')
     .delete()
-    .eq("plan_id", planId);
+    .eq('plan_id', planId);
 
   if (deleteSessionsError) {
     throw new Error(deleteSessionsError.message);
   }
 
-  const { error: deletePlanError } = await supabase
-    .from("workout_plans")
-    .delete()
-    .eq("id", planId);
+  const { error: deletePlanError } = await supabase.from('workout_plans').delete().eq('id', planId);
 
   if (deletePlanError) {
     throw new Error(deletePlanError.message);
