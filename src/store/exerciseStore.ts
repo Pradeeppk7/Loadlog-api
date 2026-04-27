@@ -12,6 +12,21 @@ type ExerciseHistoryItem = {
   sets: ExerciseHistorySet[];
 };
 
+type SessionExerciseRow = {
+  id: string;
+  session_id: string;
+};
+
+type WorkoutSessionRow = {
+  performed_at: string;
+};
+
+type SessionSetRow = {
+  set_number: number;
+  actual_reps: number;
+  actual_weight: number;
+};
+
 export async function getExerciseHistory(exerciseName: string): Promise<ExerciseHistory> {
   const { data: matchingExercises, error: exercisesError } = await supabase
     .from('session_exercises')
@@ -24,12 +39,12 @@ export async function getExerciseHistory(exerciseName: string): Promise<Exercise
 
   const history: ExerciseHistoryItem[] = [];
 
-  for (const exercise of matchingExercises || []) {
+  for (const exercise of (matchingExercises || []) as SessionExerciseRow[]) {
     const { data: session, error: sessionError } = await supabase
       .from('workout_sessions')
       .select('performed_at')
       .eq('id', exercise.session_id)
-      .maybeSingle();
+      .maybeSingle<WorkoutSessionRow>();
 
     if (sessionError) {
       throw new Error(sessionError.message);
@@ -47,7 +62,7 @@ export async function getExerciseHistory(exerciseName: string): Promise<Exercise
 
     history.push({
       performedAt: session?.performed_at || new Date().toISOString(),
-      sets: (sets || []).map(setItem => ({
+      sets: ((sets || []) as SessionSetRow[]).map(setItem => ({
         setNumber: setItem.set_number,
         actualReps: setItem.actual_reps,
         actualWeight: Number(setItem.actual_weight),

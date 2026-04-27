@@ -1,11 +1,9 @@
 import winston from 'winston';
+import config from '../config';
 
 let logger: winston.Logger;
 
 function createLogger() {
-  // Lazy load config to avoid circular dependencies
-  const config = require('../config').default;
-
   const logFormat = winston.format.combine(
     winston.format.timestamp(),
     winston.format.errors({ stack: true }),

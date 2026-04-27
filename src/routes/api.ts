@@ -1,4 +1,4 @@
-import { OpenAPIBackend } from 'openapi-backend';
+import { Document, OpenAPIBackend, Request as OpenAPIRequest } from 'openapi-backend';
 import YAML from 'yamljs';
 import express from 'express';
 import path from 'path';
@@ -9,9 +9,10 @@ import { commonHandlers } from '../handlers/commonHandlers';
 import { aiHandlers } from '../handlers/aiHandlers';
 
 const definitionPath = path.join(process.cwd(), 'src', 'openapi', 'openapi.yaml');
+const definition = YAML.load(definitionPath) as Document;
 
 const api = new OpenAPIBackend({
-  definition: YAML.load(definitionPath),
+  definition,
   validate: true,
 });
 
@@ -20,8 +21,8 @@ api.register(workoutSessionHandlers);
 api.register(exerciseHandlers);
 api.register(aiHandlers);
 api.register(commonHandlers);
-api.init();
+void api.init();
 
 export const apiHandler = (req: express.Request, res: express.Response) => {
-  return api.handleRequest(req as any, req, res);
+  return api.handleRequest(req as unknown as OpenAPIRequest, req, res);
 };

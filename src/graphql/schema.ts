@@ -12,7 +12,12 @@ import {
   listWorkoutSessionsFiltered,
 } from '../store/workoutSessionStore';
 import { getExerciseHistory } from '../store/exerciseStore';
-import { validateInput, workoutPlanValidation, workoutSessionValidation } from '../utils/validation';
+import { CreateWorkoutPlanInput, CreateWorkoutSessionInput } from '../models/workoutPlanModels';
+import {
+  validateInput,
+  workoutPlanValidation,
+  workoutSessionValidation,
+} from '../utils/validation';
 import logger from '../utils/logger';
 
 export const schema = buildSchema(`
@@ -209,10 +214,13 @@ export const rootValue = {
     }
   },
 
-  createWorkoutPlan: async ({ input }: { input: any }) => {
+  createWorkoutPlan: async ({ input }: { input: unknown }) => {
     try {
-      logger.debug('Creating workout plan', { input });
-      const validatedInput = validateInput(workoutPlanValidation.create, input);
+      logger.debug('Creating workout plan');
+      const validatedInput = validateInput<CreateWorkoutPlanInput>(
+        workoutPlanValidation.create,
+        input
+      );
       const plan = await createWorkoutPlan(validatedInput);
       logger.info('Workout plan created successfully', { planId: plan.id });
       return plan;
@@ -226,10 +234,13 @@ export const rootValue = {
     }
   },
 
-  updateWorkoutPlan: async ({ planId, input }: { planId: string; input: any }) => {
+  updateWorkoutPlan: async ({ planId, input }: { planId: string; input: unknown }) => {
     try {
-      logger.debug('Updating workout plan', { planId, input });
-      const validatedInput = validateInput(workoutPlanValidation.update, input);
+      logger.debug('Updating workout plan', { planId });
+      const validatedInput = validateInput<CreateWorkoutPlanInput>(
+        workoutPlanValidation.update,
+        input
+      );
       const plan = await updateWorkoutPlan(planId, validatedInput);
 
       if (!plan) {
@@ -266,10 +277,13 @@ export const rootValue = {
     }
   },
 
-  createWorkoutSession: async ({ input }: { input: any }) => {
+  createWorkoutSession: async ({ input }: { input: unknown }) => {
     try {
-      logger.debug('Creating workout session', { input });
-      const validatedInput = validateInput(workoutSessionValidation.create, input);
+      logger.debug('Creating workout session');
+      const validatedInput = validateInput<CreateWorkoutSessionInput>(
+        workoutSessionValidation.create,
+        input
+      );
       const session = await createWorkoutSession(validatedInput);
       logger.info('Workout session created successfully', { sessionId: session.id });
       return session;

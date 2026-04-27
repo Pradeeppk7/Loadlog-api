@@ -1,6 +1,30 @@
 import { supabase } from '../db/supabaseClient';
 import { WorkoutPlan, CreateWorkoutPlanInput } from '../models/workoutPlanModels';
 
+type PlanSetRow = {
+  set_number: number;
+  target_reps: number;
+  target_weight: number;
+};
+
+type WorkoutPlanRow = {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type PlanExerciseRow = {
+  id: string;
+  exercise_name: string;
+  order_index: number;
+};
+
+type RowWithId = {
+  id: string;
+};
+
 type PlanSet = {
   setNumber: number;
   targetReps: number;
@@ -14,7 +38,7 @@ type PlanExercise = {
   sets: PlanSet[];
 };
 
-function mapPlanSets(rows: any[]): PlanSet[] {
+function mapPlanSets(rows: PlanSetRow[]): PlanSet[] {
   return (rows || []).map(row => ({
     setNumber: row.set_number,
     targetReps: row.target_reps,
@@ -22,7 +46,7 @@ function mapPlanSets(rows: any[]): PlanSet[] {
   }));
 }
 
-async function buildWorkoutPlan(plan: any): Promise<WorkoutPlan> {
+async function buildWorkoutPlan(plan: WorkoutPlanRow): Promise<WorkoutPlan> {
   const { data: exercises, error: exercisesError } = await supabase
     .from('plan_exercises')
     .select('*')
@@ -35,7 +59,7 @@ async function buildWorkoutPlan(plan: any): Promise<WorkoutPlan> {
 
   const formattedExercises: PlanExercise[] = [];
 
-  for (const exercise of exercises || []) {
+  for (const exercise of (exercises || []) as PlanExerciseRow[]) {
     const { data: sets, error: setsError } = await supabase
       .from('plan_sets')
       .select('*')
@@ -50,17 +74,17 @@ async function buildWorkoutPlan(plan: any): Promise<WorkoutPlan> {
       id: exercise.id,
       exerciseName: exercise.exercise_name,
       order: exercise.order_index,
-      sets: mapPlanSets(sets || []),
+      sets: mapPlanSets((sets || []) as PlanSetRow[]),
     });
   }
 
   return {
     id: plan.id,
     name: plan.name,
-    description: plan.description || undefined,
     exercises: formattedExercises,
     createdAt: plan.created_at,
     updatedAt: plan.updated_at,
+    ...(plan.description ? { description: plan.description } : {}),
   };
 }
 
@@ -85,7 +109,7 @@ export async function listWorkoutPlansFiltered(filters?: {
 
   const result: WorkoutPlan[] = [];
 
-  for (const plan of plans || []) {
+  for (const plan of (plans || []) as WorkoutPlanRow[]) {
     result.push(await buildWorkoutPlan(plan));
   }
 
@@ -100,7 +124,7 @@ export async function createWorkoutPlan(data: CreateWorkoutPlanInput): Promise<W
       description: data.description,
     })
     .select()
-    .single();
+    .single<WorkoutPlanRow>();
 
   if (planError || !plan) {
     throw new Error(planError?.message || 'Failed to create workout plan');
@@ -115,7 +139,7 @@ export async function createWorkoutPlan(data: CreateWorkoutPlanInput): Promise<W
         order_index: exercise.order,
       })
       .select()
-      .single();
+      .single<RowWithId>();
 
     if (exerciseError || !planExercise) {
       throw new Error(exerciseError?.message || 'Failed to create plan exercise');
@@ -143,7 +167,7 @@ export async function getWorkoutPlanById(planId: string): Promise<WorkoutPlan | 
     .from('workout_plans')
     .select('*')
     .eq('id', planId)
-    .maybeSingle();
+    .maybeSingle<WorkoutPlanRow>();
 
   if (error) {
     throw new Error(error.message);
@@ -188,7 +212,7 @@ export async function updateWorkoutPlan(
     throw new Error(existingExercisesError.message);
   }
 
-  for (const exercise of existingExercises || []) {
+  for (const exercise of (existingExercises || []) as RowWithId[]) {
     const { error: deleteSetsError } = await supabase
       .from('plan_sets')
       .delete()
@@ -217,7 +241,7 @@ export async function updateWorkoutPlan(
         order_index: exercise.order,
       })
       .select()
-      .single();
+      .single<RowWithId>();
 
     if (exerciseError || !planExercise) {
       throw new Error(exerciseError?.message || 'Failed to recreate plan exercise');
@@ -256,7 +280,7 @@ export async function deleteWorkoutPlan(planId: string): Promise<boolean> {
     throw new Error(exercisesError.message);
   }
 
-  for (const exercise of exercises || []) {
+  for (const exercise of (exercises || []) as RowWithId[]) {
     const { error: deleteSetsError } = await supabase
       .from('plan_sets')
       .delete()
@@ -285,7 +309,7 @@ export async function deleteWorkoutPlan(planId: string): Promise<boolean> {
     throw new Error(sessionsError.message);
   }
 
-  for (const session of sessions || []) {
+  for (const session of (sessions || []) as RowWithId[]) {
     const { data: sessionExercises, error: sessionExercisesError } = await supabase
       .from('session_exercises')
       .select('id')
@@ -295,7 +319,7 @@ export async function deleteWorkoutPlan(planId: string): Promise<boolean> {
       throw new Error(sessionExercisesError.message);
     }
 
-    for (const sessionExercise of sessionExercises || []) {
+    for (const sessionExercise of (sessionExercises || []) as RowWithId[]) {
       const { error: deleteSessionSetsError } = await supabase
         .from('session_sets')
         .delete()

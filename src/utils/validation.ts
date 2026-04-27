@@ -1,7 +1,9 @@
 import Joi from 'joi';
+import { CreateWorkoutPlanInput, CreateWorkoutSessionInput } from '../models/workoutPlanModels';
+import { CoachChatInput } from '../services/coachChatService';
 
 export const workoutPlanValidation = {
-  create: Joi.object({
+  create: Joi.object<CreateWorkoutPlanInput>({
     name: Joi.string().min(1).max(100).required(),
     description: Joi.string().max(500).allow(''),
     exercises: Joi.array()
@@ -25,7 +27,7 @@ export const workoutPlanValidation = {
       .required(),
   }),
 
-  update: Joi.object({
+  update: Joi.object<CreateWorkoutPlanInput>({
     name: Joi.string().min(1).max(100),
     description: Joi.string().max(500).allow(''),
     exercises: Joi.array().items(
@@ -48,7 +50,7 @@ export const workoutPlanValidation = {
 };
 
 export const workoutSessionValidation = {
-  create: Joi.object({
+  create: Joi.object<CreateWorkoutSessionInput>({
     planId: Joi.string().uuid().required(),
     performedAt: Joi.date().iso().allow(null),
     notes: Joi.string().max(1000).allow(''),
@@ -73,7 +75,7 @@ export const workoutSessionValidation = {
   }),
 };
 
-export const coachChatValidation = Joi.object({
+export const coachChatValidation = Joi.object<CoachChatInput>({
   message: Joi.string().trim().min(1).max(4000).required(),
   history: Joi.array()
     .items(
@@ -93,7 +95,8 @@ export const coachChatValidation = Joi.object({
 });
 
 export const validateInput = <T>(schema: Joi.ObjectSchema<T>, data: unknown): T => {
-  const { error, value } = schema.validate(data, { abortEarly: false });
+  const validationResult: Joi.ValidationResult<T> = schema.validate(data, { abortEarly: false });
+  const { error, value } = validationResult;
 
   if (error) {
     const errorMessage = error.details.map(detail => detail.message).join(', ');

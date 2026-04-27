@@ -1,4 +1,5 @@
 import express from 'express';
+import { JsonObject } from 'swagger-ui-express';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
 import path from 'path';
@@ -33,7 +34,7 @@ app.use(corsMiddleware);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-const openapiDocument = YAML.load(path.join(__dirname, 'openapi', 'openapi.yaml'));
+const openapiDocument = YAML.load(path.join(__dirname, 'openapi', 'openapi.yaml')) as JsonObject;
 const graphiqlHtml = `<!DOCTYPE html>
 <html lang="en">
   <head>

@@ -1,6 +1,24 @@
 import { supabase } from '../db/supabaseClient';
 import { WorkoutSession, CreateWorkoutSessionInput } from '../models/workoutPlanModels';
 
+type SessionSetRow = {
+  set_number: number;
+  actual_reps: number;
+  actual_weight: number;
+};
+
+type WorkoutSessionRow = {
+  id: string;
+  plan_id: string;
+  performed_at: string;
+  notes: string | null;
+};
+
+type SessionExerciseRow = {
+  id: string;
+  exercise_name: string;
+};
+
 type SessionSet = {
   setNumber: number;
   actualReps: number;
@@ -12,7 +30,7 @@ type SessionExercise = {
   sets: SessionSet[];
 };
 
-function mapSessionSets(rows: any[]): SessionSet[] {
+function mapSessionSets(rows: SessionSetRow[]): SessionSet[] {
   return (rows || []).map(row => ({
     setNumber: row.set_number,
     actualReps: row.actual_reps,
@@ -20,7 +38,7 @@ function mapSessionSets(rows: any[]): SessionSet[] {
   }));
 }
 
-async function buildWorkoutSession(session: any): Promise<WorkoutSession> {
+async function buildWorkoutSession(session: WorkoutSessionRow): Promise<WorkoutSession> {
   const { data: exercises, error: exercisesError } = await supabase
     .from('session_exercises')
     .select('*')
@@ -32,7 +50,7 @@ async function buildWorkoutSession(session: any): Promise<WorkoutSession> {
 
   const formattedExercises: SessionExercise[] = [];
 
-  for (const exercise of exercises || []) {
+  for (const exercise of (exercises || []) as SessionExerciseRow[]) {
     const { data: sets, error: setsError } = await supabase
       .from('session_sets')
       .select('*')
@@ -45,7 +63,7 @@ async function buildWorkoutSession(session: any): Promise<WorkoutSession> {
 
     formattedExercises.push({
       exerciseName: exercise.exercise_name,
-      sets: mapSessionSets(sets || []),
+      sets: mapSessionSets((sets || []) as SessionSetRow[]),
     });
   }
 
@@ -53,8 +71,8 @@ async function buildWorkoutSession(session: any): Promise<WorkoutSession> {
     id: session.id,
     planId: session.plan_id,
     performedAt: session.performed_at,
-    notes: session.notes || undefined,
     exercises: formattedExercises,
+    ...(session.notes ? { notes: session.notes } : {}),
   };
 }
 
@@ -69,7 +87,7 @@ export async function createWorkoutSession(
       notes: data.notes,
     })
     .select()
-    .single();
+    .single<WorkoutSessionRow>();
 
   if (sessionError || !session) {
     throw new Error(sessionError?.message || 'Failed to create workout session');
@@ -83,7 +101,7 @@ export async function createWorkoutSession(
         exercise_name: exercise.exerciseName,
       })
       .select()
-      .single();
+      .single<{ id: string }>();
 
     if (exerciseError || !sessionExercise) {
       throw new Error(exerciseError?.message || 'Failed to create session exercise');
@@ -130,7 +148,7 @@ export async function listWorkoutSessionsFiltered(filters?: {
 
   const result: WorkoutSession[] = [];
 
-  for (const session of sessions || []) {
+  for (const session of (sessions || []) as WorkoutSessionRow[]) {
     result.push(await buildWorkoutSession(session));
   }
 
@@ -144,7 +162,7 @@ export async function getWorkoutSessionById(
     .from('workout_sessions')
     .select('*')
     .eq('id', sessionId)
-    .maybeSingle();
+    .maybeSingle<WorkoutSessionRow>();
 
   if (error) {
     throw new Error(error.message);

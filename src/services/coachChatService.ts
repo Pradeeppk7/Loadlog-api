@@ -89,7 +89,9 @@ async function getTrainingContext(): Promise<string> {
     const recentSessions = sessions.slice(0, 5).map(formatSessionSummary);
 
     return [
-      recentPlans.length > 0 ? `Current workout plans:\n- ${recentPlans.join('\n- ')}` : 'Current workout plans: none found.',
+      recentPlans.length > 0
+        ? `Current workout plans:\n- ${recentPlans.join('\n- ')}`
+        : 'Current workout plans: none found.',
       recentSessions.length > 0
         ? `Recent workout sessions:\n- ${recentSessions.join('\n- ')}`
         : 'Recent workout sessions: none found.',
@@ -117,15 +119,14 @@ function buildSystemPrompt(profile: CoachProfile | undefined, trainingContext: s
     'Do not claim to be a doctor. For medical conditions, eating disorders, severe pain, chest pain, fainting, or supplement safety concerns, advise the user to contact a qualified medical professional.',
     'Do not invent customer data. If context is missing, say so and ask a focused follow-up question.',
     'Keep answers concise, actionable, and encouraging without sounding promotional.',
-    profileLines.length > 0 ? `Customer profile:\n- ${profileLines.join('\n- ')}` : 'Customer profile: not provided.',
+    profileLines.length > 0
+      ? `Customer profile:\n- ${profileLines.join('\n- ')}`
+      : 'Customer profile: not provided.',
     trainingContext,
   ].join('\n\n');
 }
 
-function buildConversation(
-  input: CoachChatInput,
-  systemPrompt: string
-): GeminiContent[] {
+function buildConversation(input: CoachChatInput, systemPrompt: string): GeminiContent[] {
   const history = (input.history || []).slice(-20);
   const contents: GeminiContent[] = [
     {
