@@ -6,18 +6,26 @@ import {
   deleteWorkoutPlan as deleteWorkoutPlanInStore,
 } from '../store/workoutPlanStore';
 import { CreateWorkoutPlanInput } from '../models/workoutPlanModels';
-import { ApiHandlerContext, ApiRequest, ApiResponse } from '../types/api';
+import { ApiHandlerContext, ApiResponse, AuthenticatedRequest } from '../types/api';
+import { getAuthenticatedUserId } from '../middleware/auth';
 import { normalizePagination } from '../utils/pagination';
 
 export const workoutPlanHandlers = {
-  listWorkoutPlans: async (_c: ApiHandlerContext, req: ApiRequest, res: ApiResponse) => {
+  listWorkoutPlans: async (_c: ApiHandlerContext, req: AuthenticatedRequest, res: ApiResponse) => {
     try {
+      const authenticatedUserId = getAuthenticatedUserId(req);
       const { page, pageSize } = normalizePagination({
         ...(typeof req.query['page'] === 'string' ? { page: req.query['page'] } : {}),
         ...(typeof req.query['pageSize'] === 'string' ? { pageSize: req.query['pageSize'] } : {}),
       });
 
-      return res.json(await listWorkoutPlansPaginatedFromStore({ page, pageSize }));
+      return res.json(
+        await listWorkoutPlansPaginatedFromStore({
+          userId: authenticatedUserId,
+          page,
+          pageSize,
+        })
+      );
     } catch (error) {
       const details = error instanceof Error ? error.message : 'Unknown error';
       return res.status(400).json({
@@ -29,11 +37,15 @@ export const workoutPlanHandlers = {
 
   createWorkoutPlan: async (
     c: ApiHandlerContext<CreateWorkoutPlanInput>,
-    _req: ApiRequest,
+    req: AuthenticatedRequest,
     res: ApiResponse
   ) => {
     try {
-      const body = c.request.requestBody;
+      const authenticatedUserId = getAuthenticatedUserId(req);
+      const body = {
+        ...c.request.requestBody,
+        userId: authenticatedUserId,
+      };
       const created = await createWorkoutPlanInStore(body);
       return res.status(201).json(created);
     } catch (error) {
@@ -48,9 +60,10 @@ export const workoutPlanHandlers = {
 
   getWorkoutPlanById: async (
     c: ApiHandlerContext<unknown, { planId: string }>,
-    _req: ApiRequest,
+    req: AuthenticatedRequest,
     res: ApiResponse
   ) => {
+    const authenticatedUserId = getAuthenticatedUserId(req);
     const { planId } = c.request.params;
     const plan = await getWorkoutPlanByIdFromStore(planId);
 
@@ -58,16 +71,34 @@ export const workoutPlanHandlers = {
       return res.status(404).json({ error: 'Workout plan not found' });
     }
 
+    if (plan.userId !== authenticatedUserId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
     return res.json(plan);
   },
 
   updateWorkoutPlan: async (
     c: ApiHandlerContext<CreateWorkoutPlanInput, { planId: string }>,
-    _req: ApiRequest,
+    req: AuthenticatedRequest,
     res: ApiResponse
   ) => {
+    const authenticatedUserId = getAuthenticatedUserId(req);
     const { planId } = c.request.params;
-    const body = c.request.requestBody;
+    const existing = await getWorkoutPlanByIdFromStore(planId);
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Workout plan not found' });
+    }
+
+    if (existing.userId !== authenticatedUserId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const body = {
+      ...c.request.requestBody,
+      userId: authenticatedUserId,
+    };
     const updated = await updateWorkoutPlanInStore(planId, body);
 
     if (!updated) {
@@ -79,11 +110,22 @@ export const workoutPlanHandlers = {
 
   deleteWorkoutPlan: async (
     c: ApiHandlerContext<unknown, { planId: string }>,
-    _req: ApiRequest,
+    req: AuthenticatedRequest,
     res: ApiResponse
   ) => {
     try {
+      const authenticatedUserId = getAuthenticatedUserId(req);
       const { planId } = c.request.params;
+      const existing = await getWorkoutPlanByIdFromStore(planId);
+
+      if (!existing) {
+        return res.status(404).json({ error: 'Workout plan not found' });
+      }
+
+      if (existing.userId !== authenticatedUserId) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+
       const deleted = await deleteWorkoutPlanInStore(planId);
 
       if (!deleted) {

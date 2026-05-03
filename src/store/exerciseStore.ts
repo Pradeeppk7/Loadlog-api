@@ -18,6 +18,7 @@ type SessionExerciseRow = {
 };
 
 type WorkoutSessionRow = {
+  user_id: string | null;
   performed_at: string;
 };
 
@@ -27,7 +28,10 @@ type SessionSetRow = {
   actual_weight: number;
 };
 
-export async function getExerciseHistory(exerciseName: string): Promise<ExerciseHistory> {
+export async function getExerciseHistory(
+  exerciseName: string,
+  userId?: string
+): Promise<ExerciseHistory> {
   const { data: matchingExercises, error: exercisesError } = await supabase
     .from('session_exercises')
     .select('id, session_id, exercise_name')
@@ -42,12 +46,16 @@ export async function getExerciseHistory(exerciseName: string): Promise<Exercise
   for (const exercise of (matchingExercises || []) as SessionExerciseRow[]) {
     const { data: session, error: sessionError } = await supabase
       .from('workout_sessions')
-      .select('performed_at')
+      .select('user_id, performed_at')
       .eq('id', exercise.session_id)
       .maybeSingle<WorkoutSessionRow>();
 
     if (sessionError) {
       throw new Error(sessionError.message);
+    }
+
+    if (!session || (userId && session.user_id !== userId)) {
+      continue;
     }
 
     const { data: sets, error: setsError } = await supabase

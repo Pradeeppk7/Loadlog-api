@@ -8,12 +8,14 @@ import { apiHandler } from './routes/api';
 import { rootValue, schema } from './graphql/schema';
 import config from './config';
 import logger from './utils/logger';
+import { authHandlers } from './handlers/authHandlers';
 import {
   securityMiddleware,
   corsMiddleware,
   rateLimitMiddleware,
   requestLogger,
 } from './middleware/security';
+import { requireAuth } from './middleware/auth';
 import { errorHandler } from './middleware/errorHandler';
 
 const openapiDocument = YAML.load(path.join(__dirname, 'openapi', 'openapi.yaml')) as JsonObject;
@@ -249,6 +251,8 @@ export function createApp() {
     res.type('html').send(graphiqlHtml);
   });
   app.post('/graphql', createHandler({ schema, rootValue }));
+  app.post('/auth/register', authHandlers.register);
+  app.post('/auth/login', authHandlers.login);
 
   // Health check endpoint
   app.get('/health', (_req, res) => {
@@ -260,6 +264,8 @@ export function createApp() {
     });
   });
 
+  app.use(requireAuth);
+  app.get('/auth/me', authHandlers.me);
   app.use(apiHandler);
 
   // Error handling middleware (must be last)

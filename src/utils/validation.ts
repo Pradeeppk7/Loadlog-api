@@ -3,6 +3,8 @@ import {
   CreateUserInput,
   CreateWorkoutPlanInput,
   CreateWorkoutSessionInput,
+  LoginInput,
+  RegisterUserInput,
   UpdateUserInput,
 } from '../models/workoutPlanModels';
 import { CoachChatInput } from '../services/coachChatService';
@@ -104,6 +106,27 @@ export const coachChatValidation = Joi.object<CoachChatInput>({
   }).default({}),
 });
 
+const passwordSchema = Joi.string().min(8).max(128).required();
+
+export const authValidation = {
+  register: Joi.object<RegisterUserInput>({
+    name: Joi.string().trim().min(1).max(100).required(),
+    email: Joi.string().trim().email().required(),
+    password: passwordSchema,
+    age: Joi.number().integer().min(13).max(120),
+    coachProfile: Joi.object({
+      goal: Joi.string().trim().max(500),
+      dietaryPreferences: Joi.string().trim().max(500),
+      injuriesOrLimitations: Joi.string().trim().max(500),
+      experienceLevel: Joi.string().valid('beginner', 'intermediate', 'advanced'),
+    }),
+  }),
+  login: Joi.object<LoginInput>({
+    email: Joi.string().trim().email().required(),
+    password: passwordSchema,
+  }),
+};
+
 export const userValidation = {
   create: Joi.object<CreateUserInput>({
     name: Joi.string().trim().min(1).max(100).required(),
@@ -131,7 +154,8 @@ export const userValidation = {
 
 export const validateInput = <T>(schema: Joi.ObjectSchema<T>, data: unknown): T => {
   const validationResult: Joi.ValidationResult<T> = schema.validate(data, { abortEarly: false });
-  const { error, value } = validationResult;
+  const error = validationResult.error;
+  const value = validationResult.value as T;
 
   if (error) {
     const errorMessage = error.details.map(detail => detail.message).join(', ');

@@ -126,6 +126,20 @@ export type UpdateUserInput = {
   coachProfile?: CoachProfile;
 };
 
+export type RegisterUserInput = CreateUserInput & {
+  password: string;
+};
+
+export type LoginInput = {
+  email: string;
+  password: string;
+};
+
+export type AuthPayload = {
+  user: User;
+  token: string;
+};
+
 export type PaginationInput = {
   page?: number;
   pageSize?: number;

@@ -8,3 +8,10 @@ export type ApiHandlerContext<RequestBody = unknown, Params = Record<string, str
 
 export type ApiRequest = Request;
 export type ApiResponse = Response;
+
+export type AuthenticatedRequest = Request & {
+  auth?: {
+    userId: string;
+    email: string;
+  };
+};

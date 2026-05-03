@@ -43,10 +43,18 @@ Edit `.env` with your Supabase credentials:
 ```env
 SUPABASE_URL=your-supabase-url
 SUPABASE_ANON_KEY=your-supabase-anon-key
+JWT_SECRET=replace-with-a-long-random-secret
+JWT_EXPIRES_IN=7d
 GEMINI_API_KEY=your-gemini-api-key
 GEMINI_MODEL=gemini-2.5-flash
 NODE_ENV=development
 PORT=3000
+```
+
+5. Apply the auth migration in Supabase:
+```sql
+alter table public.users add column if not exists password_hash text;
+create unique index if not exists users_email_unique_idx on public.users (lower(email));
 ```
 
 4. Start the development server:
@@ -156,6 +164,8 @@ tests/                   # Test files
 |----------|-------------|----------|
 | `SUPABASE_URL` | Your Supabase project URL | Yes |
 | `SUPABASE_ANON_KEY` | Your Supabase anonymous key | Yes |
+| `JWT_SECRET` | Secret used to sign auth tokens | Yes |
+| `JWT_EXPIRES_IN` | JWT lifetime (example: `7d`) | No |
 | `GEMINI_API_KEY` | Gemini API key for coach chat | No |
 | `GEMINI_MODEL` | Gemini model name | No |
 | `NODE_ENV` | Environment (development/production) | No |

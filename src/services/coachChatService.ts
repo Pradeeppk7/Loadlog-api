@@ -29,6 +29,7 @@ interface GeminiContent {
 }
 
 interface GeminiCandidate {
+  finishReason?: string;
   content?: {
     parts?: Array<{ text?: string }>;
   };
@@ -117,7 +118,9 @@ function buildSystemPrompt(
     'Use the workout context when it is relevant. If the user asks something unrelated, answer briefly and steer back to health and training support.',
     'Do not claim to be a doctor. For medical conditions, eating disorders, severe pain, chest pain, fainting, or supplement safety concerns, advise the user to contact a qualified medical professional.',
     'Do not invent customer data. If context is missing, say so and ask a focused follow-up question.',
-    'Keep answers concise, actionable, and encouraging without sounding promotional.',
+    'Keep answers as short as possible while still fully answering the question.',
+    'Use plain text only. Prefer 1 to 3 short sentences. Avoid lists unless the user explicitly asks for them.',
+    'Always end with a complete sentence. Do not trail off or stop mid-thought.',
     profileLines.length > 0
       ? `Customer profile:\n- ${profileLines.join('\n- ')}`
       : 'Customer profile: not provided.',
@@ -157,14 +160,56 @@ function buildConversation(input: CoachChatInput, systemPrompt: string): GeminiC
   return contents;
 }
 
-function extractText(response: GeminiResponse): string | undefined {
-  const parts = response.candidates?.[0]?.content?.parts || [];
+function extractCandidate(response: GeminiResponse): { text?: string; finishReason?: string } {
+  const candidate = response.candidates?.[0];
+  const parts = candidate?.content?.parts || [];
   const text = parts
     .map(part => part.text || '')
     .join('')
     .trim();
+  const result: { text?: string; finishReason?: string } = {};
 
-  return text || undefined;
+  if (text) {
+    result.text = text;
+  }
+
+  if (candidate?.finishReason) {
+    result.finishReason = candidate.finishReason;
+  }
+
+  return result;
+}
+
+async function requestGemini(
+  contents: GeminiContent[],
+  maxOutputTokens: number
+): Promise<GeminiResponse> {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${config.gemini.model}:generateContent`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': config.gemini.apiKey!,
+      },
+      body: JSON.stringify({
+        contents,
+        generationConfig: {
+          temperature: 0.7,
+          topP: 0.9,
+          maxOutputTokens,
+        },
+      }),
+    }
+  );
+
+  const payload = (await response.json()) as GeminiResponse;
+
+  if (!response.ok) {
+    throw new Error(payload.error?.message || 'Gemini request failed');
+  }
+
+  return payload;
 }
 
 export async function getCoachChatReply(input: CoachChatInput): Promise<string> {
@@ -180,37 +225,40 @@ export async function getCoachChatReply(input: CoachChatInput): Promise<string> 
   const trainingContext = await getTrainingContext(input.userId);
   const systemPrompt = buildSystemPrompt(storedUser?.name, mergedProfile, trainingContext);
   const contents = buildConversation(input, systemPrompt);
+  const initialPayload = await requestGemini(contents, 1200);
+  const initialCandidate = extractCandidate(initialPayload);
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${config.gemini.model}:generateContent`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': config.gemini.apiKey,
-      },
-      body: JSON.stringify({
-        contents,
-        generationConfig: {
-          temperature: 0.7,
-          topP: 0.9,
-          maxOutputTokens: 700,
-        },
-      }),
-    }
-  );
-
-  const payload = (await response.json()) as GeminiResponse;
-
-  if (!response.ok) {
-    throw new Error(payload.error?.message || 'Gemini request failed');
-  }
-
-  const text = extractText(payload);
-
-  if (!text) {
+  if (!initialCandidate.text) {
     throw new Error('Gemini returned an empty response');
   }
 
-  return text;
+  if (initialCandidate.finishReason !== 'MAX_TOKENS') {
+    return initialCandidate.text;
+  }
+
+  logger.warn('Coach chat response hit max tokens, requesting continuation', {
+    model: config.gemini.model,
+  });
+
+  const continuationPayload = await requestGemini(
+    [
+      ...contents,
+      {
+        role: 'model',
+        parts: [{ text: initialCandidate.text }],
+      },
+      {
+        role: 'user',
+        parts: [
+          {
+            text: 'Continue exactly where you stopped. Do not repeat earlier text. Finish the answer completely.',
+          },
+        ],
+      },
+    ],
+    800
+  );
+  const continuationCandidate = extractCandidate(continuationPayload);
+
+  return `${initialCandidate.text}${continuationCandidate.text ? `\n${continuationCandidate.text}` : ''}`;
 }

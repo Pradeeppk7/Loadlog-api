@@ -1,25 +1,38 @@
-import { createUser, getUserById, listUsers, updateUser } from '../store/userStore';
+import { createUser, getUserById, updateUser } from '../store/userStore';
 import { listWorkoutPlansPaginated } from '../store/workoutPlanStore';
 import { listWorkoutSessionsPaginated } from '../store/workoutSessionStore';
 import { CreateUserInput, UpdateUserInput } from '../models/workoutPlanModels';
-import { ApiHandlerContext, ApiRequest, ApiResponse } from '../types/api';
+import { ApiHandlerContext, ApiResponse, AuthenticatedRequest } from '../types/api';
+import { getAuthenticatedUserId } from '../middleware/auth';
 import { normalizePagination } from '../utils/pagination';
 
 export const userHandlers = {
-  listUsers: async (_c: ApiHandlerContext, _req: ApiRequest, res: ApiResponse) => {
-    return res.json(await listUsers());
+  listUsers: async (_c: ApiHandlerContext, req: AuthenticatedRequest, res: ApiResponse) => {
+    const authenticatedUserId = getAuthenticatedUserId(req);
+    const user = await getUserById(authenticatedUserId);
+    return res.json(user ? [user] : []);
   },
 
-  createUser: async (c: ApiHandlerContext<CreateUserInput>, _req: ApiRequest, res: ApiResponse) => {
+  createUser: async (
+    c: ApiHandlerContext<CreateUserInput>,
+    _req: AuthenticatedRequest,
+    res: ApiResponse
+  ) => {
     const created = await createUser(c.request.requestBody);
     return res.status(201).json(created);
   },
 
   getUserById: async (
     c: ApiHandlerContext<unknown, { userId: string }>,
-    _req: ApiRequest,
+    req: AuthenticatedRequest,
     res: ApiResponse
   ) => {
+    const authenticatedUserId = getAuthenticatedUserId(req);
+
+    if (authenticatedUserId !== c.request.params.userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
     const user = await getUserById(c.request.params.userId);
 
     if (!user) {
@@ -31,9 +44,15 @@ export const userHandlers = {
 
   updateUser: async (
     c: ApiHandlerContext<UpdateUserInput, { userId: string }>,
-    _req: ApiRequest,
+    req: AuthenticatedRequest,
     res: ApiResponse
   ) => {
+    const authenticatedUserId = getAuthenticatedUserId(req);
+
+    if (authenticatedUserId !== c.request.params.userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
     const user = await updateUser(c.request.params.userId, c.request.requestBody);
 
     if (!user) {
@@ -45,9 +64,15 @@ export const userHandlers = {
 
   listUserWorkoutPlans: async (
     c: ApiHandlerContext<unknown, { userId: string }>,
-    req: ApiRequest,
+    req: AuthenticatedRequest,
     res: ApiResponse
   ) => {
+    const authenticatedUserId = getAuthenticatedUserId(req);
+
+    if (authenticatedUserId !== c.request.params.userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
     const user = await getUserById(c.request.params.userId);
 
     if (!user) {
@@ -70,9 +95,15 @@ export const userHandlers = {
 
   listUserWorkoutSessions: async (
     c: ApiHandlerContext<unknown, { userId: string }>,
-    req: ApiRequest,
+    req: AuthenticatedRequest,
     res: ApiResponse
   ) => {
+    const authenticatedUserId = getAuthenticatedUserId(req);
+
+    if (authenticatedUserId !== c.request.params.userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
     const user = await getUserById(c.request.params.userId);
 
     if (!user) {

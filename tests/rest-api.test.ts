@@ -18,11 +18,15 @@ jest.mock('../src/store/workoutSessionStore', () => ({
 jest.mock('../src/store/userStore', () => ({
   listUsers: jest.fn(),
   getUserById: jest.fn(),
+  getUserByEmail: jest.fn(),
   createUser: jest.fn(),
+  createUserWithPassword: jest.fn(),
+  getUserAuthByEmail: jest.fn(),
   updateUser: jest.fn(),
 }));
 
 import app from '../src/index';
+import { hashPassword, signAuthToken } from '../src/services/authService';
 import {
   listWorkoutPlansPaginated,
   createWorkoutPlan,
@@ -35,8 +39,10 @@ import {
 } from '../src/store/workoutSessionStore';
 import {
   createUser,
+  createUserWithPassword,
+  getUserAuthByEmail,
+  getUserByEmail,
   getUserById,
-  listUsers,
   updateUser,
 } from '../src/store/userStore';
 
@@ -87,6 +93,10 @@ describe('REST API', () => {
     updatedAt: '2024-01-01T00:00:00Z',
   };
 
+  const authHeader = () => ({
+    Authorization: `Bearer ${signAuthToken(userFixture)}`,
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -110,16 +120,20 @@ describe('REST API', () => {
       },
     });
 
-    const response = await request(app).get('/workout-plans?page=2&pageSize=1');
+    const response = await request(app).get('/workout-plans?page=2&pageSize=1').set(authHeader());
 
     expect(response.status).toBe(200);
-    expect(listWorkoutPlansPaginated).toHaveBeenCalledWith({ page: 2, pageSize: 1 });
+    expect(listWorkoutPlansPaginated).toHaveBeenCalledWith({
+      userId: userFixture.id,
+      page: 2,
+      pageSize: 1,
+    });
     expect(response.body.items).toHaveLength(1);
     expect(response.body.pagination.page).toBe(2);
   });
 
   it('rejects invalid workout plan pagination via request validation', async () => {
-    const response = await request(app).get('/workout-plans?page=0&pageSize=1');
+    const response = await request(app).get('/workout-plans?page=0&pageSize=1').set(authHeader());
 
     expect(response.status).toBe(400);
     expect(response.body.error).toBe('Validation failed');
@@ -130,7 +144,7 @@ describe('REST API', () => {
       workoutPlanFixture
     );
 
-    const response = await request(app).get('/workout-plans/plan-1');
+    const response = await request(app).get('/workout-plans/plan-1').set(authHeader());
 
     expect(response.status).toBe(200);
     expect(response.body.id).toBe('plan-1');
@@ -141,7 +155,7 @@ describe('REST API', () => {
       undefined
     );
 
-    const response = await request(app).get('/workout-plans/missing-plan');
+    const response = await request(app).get('/workout-plans/missing-plan').set(authHeader());
 
     expect(response.status).toBe(404);
     expect(response.body.error).toBe('Workout plan not found');
@@ -152,7 +166,7 @@ describe('REST API', () => {
       workoutPlanFixture
     );
 
-    const response = await request(app).post('/workout-plans').send({
+    const response = await request(app).post('/workout-plans').set(authHeader()).send({
       userId: '11111111-1111-1111-1111-111111111111',
       name: 'Push Day',
       description: 'Chest and shoulders',
@@ -171,7 +185,7 @@ describe('REST API', () => {
   });
 
   it('validates workout plan payloads', async () => {
-    const response = await request(app).post('/workout-plans').send({
+    const response = await request(app).post('/workout-plans').set(authHeader()).send({
       description: 'Missing required fields',
     });
 
@@ -190,10 +204,14 @@ describe('REST API', () => {
       },
     });
 
-    const response = await request(app).get('/workout-sessions?page=1&pageSize=5');
+    const response = await request(app).get('/workout-sessions?page=1&pageSize=5').set(authHeader());
 
     expect(response.status).toBe(200);
-    expect(listWorkoutSessionsPaginated).toHaveBeenCalledWith({ page: 1, pageSize: 5 });
+    expect(listWorkoutSessionsPaginated).toHaveBeenCalledWith({
+      userId: userFixture.id,
+      page: 1,
+      pageSize: 5,
+    });
     expect(response.body.items[0].id).toBe('session-1');
   });
 
@@ -202,7 +220,11 @@ describe('REST API', () => {
       workoutSessionFixture
     );
 
-    const response = await request(app).post('/workout-sessions').send({
+    (getWorkoutPlanById as jest.MockedFunction<typeof getWorkoutPlanById>).mockResolvedValue(
+      workoutPlanFixture
+    );
+
+    const response = await request(app).post('/workout-sessions').set(authHeader()).send({
       userId: '11111111-1111-1111-1111-111111111111',
       planId: '11111111-1111-1111-1111-111111111111',
       performedAt: '2024-01-01T00:00:00Z',
@@ -225,7 +247,7 @@ describe('REST API', () => {
       workoutSessionFixture
     );
 
-    const response = await request(app).get('/workout-sessions/session-1');
+    const response = await request(app).get('/workout-sessions/session-1').set(authHeader());
 
     expect(response.status).toBe(200);
     expect(response.body.id).toBe('session-1');
@@ -236,16 +258,16 @@ describe('REST API', () => {
       undefined
     );
 
-    const response = await request(app).get('/workout-sessions/missing-session');
+    const response = await request(app).get('/workout-sessions/missing-session').set(authHeader());
 
     expect(response.status).toBe(404);
     expect(response.body.error).toBe('Workout session not found');
   });
 
   it('lists users', async () => {
-    (listUsers as jest.MockedFunction<typeof listUsers>).mockResolvedValue([userFixture]);
+    (getUserById as jest.MockedFunction<typeof getUserById>).mockResolvedValue(userFixture);
 
-    const response = await request(app).get('/users');
+    const response = await request(app).get('/users').set(authHeader());
 
     expect(response.status).toBe(200);
     expect(response.body[0].email).toBe('pradeep@example.com');
@@ -254,7 +276,7 @@ describe('REST API', () => {
   it('creates a user', async () => {
     (createUser as jest.MockedFunction<typeof createUser>).mockResolvedValue(userFixture);
 
-    const response = await request(app).post('/users').send({
+    const response = await request(app).post('/users').set(authHeader()).send({
       name: 'Pradeep',
       email: 'pradeep@example.com',
       age: 24,
@@ -271,7 +293,7 @@ describe('REST API', () => {
   it('returns user by id', async () => {
     (getUserById as jest.MockedFunction<typeof getUserById>).mockResolvedValue(userFixture);
 
-    const response = await request(app).get(`/users/${userFixture.id}`);
+    const response = await request(app).get(`/users/${userFixture.id}`).set(authHeader());
 
     expect(response.status).toBe(200);
     expect(response.body.name).toBe('Pradeep');
@@ -286,7 +308,7 @@ describe('REST API', () => {
       },
     });
 
-    const response = await request(app).put(`/users/${userFixture.id}`).send({
+    const response = await request(app).put(`/users/${userFixture.id}`).set(authHeader()).send({
       coachProfile: {
         goal: 'Lose fat',
       },
@@ -308,7 +330,7 @@ describe('REST API', () => {
       },
     });
 
-    const response = await request(app).get(`/users/${userFixture.id}/workout-plans`);
+    const response = await request(app).get(`/users/${userFixture.id}/workout-plans`).set(authHeader());
 
     expect(response.status).toBe(200);
     expect(listWorkoutPlansPaginated).toHaveBeenCalledWith({
@@ -332,7 +354,7 @@ describe('REST API', () => {
       },
     });
 
-    const response = await request(app).get(`/users/${userFixture.id}/workout-sessions`);
+    const response = await request(app).get(`/users/${userFixture.id}/workout-sessions`).set(authHeader());
 
     expect(response.status).toBe(200);
     expect(listWorkoutSessionsPaginated).toHaveBeenCalledWith({
@@ -340,5 +362,50 @@ describe('REST API', () => {
       page: 1,
       pageSize: 10,
     });
+  });
+
+  it('registers a user and returns a token', async () => {
+    (createUserWithPassword as jest.MockedFunction<typeof createUserWithPassword>).mockResolvedValue(
+      userFixture
+    );
+    (getUserAuthByEmail as jest.MockedFunction<typeof getUserAuthByEmail>).mockResolvedValue(
+      undefined
+    );
+    (getUserByEmail as jest.MockedFunction<typeof getUserByEmail>).mockResolvedValue(undefined);
+
+    const response = await request(app).post('/auth/register').send({
+      name: 'Pradeep',
+      email: 'pradeep@example.com',
+      password: 'password123',
+    });
+
+    expect(response.status).toBe(201);
+    expect(response.body.user.email).toBe('pradeep@example.com');
+    expect(response.body.token).toBeTruthy();
+  });
+
+  it('logs in with valid credentials', async () => {
+    (getUserAuthByEmail as jest.MockedFunction<typeof getUserAuthByEmail>).mockResolvedValue({
+      user: userFixture,
+      passwordHash: await hashPassword('password123'),
+    });
+
+    const response = await request(app).post('/auth/login').send({
+      email: 'pradeep@example.com',
+      password: 'password123',
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.user.id).toBe(userFixture.id);
+    expect(response.body.token).toBeTruthy();
+  });
+
+  it('returns the authenticated user from /auth/me', async () => {
+    (getUserById as jest.MockedFunction<typeof getUserById>).mockResolvedValue(userFixture);
+
+    const response = await request(app).get('/auth/me').set(authHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.body.email).toBe(userFixture.email);
   });
 });

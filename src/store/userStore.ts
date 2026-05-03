@@ -1,17 +1,28 @@
 import { supabase } from '../db/supabaseClient';
-import { CreateUserInput, UpdateUserInput, User } from '../models/workoutPlanModels';
+import {
+  CreateUserInput,
+  RegisterUserInput,
+  UpdateUserInput,
+  User,
+} from '../models/workoutPlanModels';
 
 type UserRow = {
   id: string;
   name: string;
   email: string;
   age: number | null;
+  password_hash: string | null;
   goal: string | null;
   dietary_preferences: string | null;
   injuries_or_limitations: string | null;
   experience_level: 'beginner' | 'intermediate' | 'advanced' | null;
   created_at: string;
   updated_at: string;
+};
+
+export type UserAuthRecord = {
+  user: User;
+  passwordHash: string;
 };
 
 function mapUser(row: UserRow): User {
@@ -82,10 +93,69 @@ export async function getUserById(userId: string): Promise<User | undefined> {
   return data ? mapUser(data) : undefined;
 }
 
+export async function getUserByEmail(email: string): Promise<User | undefined> {
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('email', email.toLowerCase())
+    .maybeSingle<UserRow>();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ? mapUser(data) : undefined;
+}
+
+export async function getUserAuthByEmail(email: string): Promise<UserAuthRecord | undefined> {
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('email', email.toLowerCase())
+    .maybeSingle<UserRow>();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data || !data.password_hash) {
+    return undefined;
+  }
+
+  return {
+    user: mapUser(data),
+    passwordHash: data.password_hash,
+  };
+}
+
 export async function createUser(input: CreateUserInput): Promise<User> {
   const { data, error } = await supabase
     .from('users')
-    .insert(mapUserInput(input))
+    .insert({
+      ...mapUserInput(input),
+      email: input.email.toLowerCase(),
+    })
+    .select('*')
+    .single<UserRow>();
+
+  if (error || !data) {
+    throw new Error(error?.message || 'Failed to create user');
+  }
+
+  return mapUser(data);
+}
+
+export async function createUserWithPassword(
+  input: RegisterUserInput,
+  passwordHash: string
+): Promise<User> {
+  const { data, error } = await supabase
+    .from('users')
+    .insert({
+      ...mapUserInput(input),
+      email: input.email.toLowerCase(),
+      password_hash: passwordHash,
+    })
     .select('*')
     .single<UserRow>();
 
@@ -110,6 +180,7 @@ export async function updateUser(
     .from('users')
     .update({
       ...mapUserInput(input),
+      ...(input.email !== undefined ? { email: input.email.toLowerCase() } : {}),
       updated_at: new Date().toISOString(),
     })
     .eq('id', userId)

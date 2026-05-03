@@ -6,6 +6,10 @@ dotenv.config();
 interface Config {
   port: number;
   nodeEnv: string;
+  auth: {
+    jwtSecret: string;
+    jwtExpiresIn: string;
+  };
   supabase: {
     url: string;
     anonKey: string;
@@ -32,6 +36,10 @@ function validateEnvVar(name: string, value: string | undefined): string {
 const config: Config = {
   port: parseInt(process.env['PORT'] || '3000', 10),
   nodeEnv: process.env['NODE_ENV'] || 'development',
+  auth: {
+    jwtSecret: validateEnvVar('JWT_SECRET', process.env['JWT_SECRET']),
+    jwtExpiresIn: process.env['JWT_EXPIRES_IN'] || '7d',
+  },
   supabase: {
     url: validateEnvVar('SUPABASE_URL', process.env['SUPABASE_URL']),
     anonKey: validateEnvVar('SUPABASE_ANON_KEY', process.env['SUPABASE_ANON_KEY']),
@@ -46,6 +54,8 @@ const config: Config = {
       'https://loadlog-api.onrender.com',
       'http://localhost:3000',
       'http://127.0.0.1:3000',
+      'http://localhost:5173',
+      'http://localhost:5174',
     ],
   },
   isDevelopment: process.env['NODE_ENV'] === 'development',

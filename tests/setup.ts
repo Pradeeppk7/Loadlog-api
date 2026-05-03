@@ -4,6 +4,7 @@ import { jest } from '@jest/globals';
 process.env['NODE_ENV'] = 'test';
 process.env['SUPABASE_URL'] = 'https://test.supabase.co';
 process.env['SUPABASE_ANON_KEY'] = 'test-key';
+process.env['JWT_SECRET'] = 'test-jwt-secret';
 
 // Mock Supabase
 jest.mock('@supabase/supabase-js', () => ({
