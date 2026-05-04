@@ -51,6 +51,7 @@ const config: Config = {
   cors: {
     allowedOrigins: [
       'https://frontend-load-log.vercel.app',
+      'https://loadlog.netlify.app',
       'https://loadlog-api.onrender.com',
       'http://localhost:3000',
       'http://127.0.0.1:3000',
