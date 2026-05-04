@@ -189,6 +189,12 @@ The backend repo includes an Azure App Service deployment workflow:
 
 `Loadlog api/.github/workflows/azure-deploy.yml`
 
+Note:
+
+- The GitHub Actions workflow was prepared for Azure deployment, but it could not be used in practice because the Azure subscription did not have enough free quota to create the required Web App/App Service resources.
+- Azure portal error at the time of deployment: `Operation cannot be completed without additional quota` with `Current Limit (Free VMs): 0` and `Amount required for this deployment (Free VMs): 1`.
+- Because of that quota restriction, the project deployment was completed using Render instead of Azure.
+
 Set these GitHub repository variables:
 
 - `AZURE_RESOURCE_GROUP`

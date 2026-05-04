@@ -260,6 +260,9 @@ describe('GraphQL Resolvers', () => {
       const input = updatePlanInput;
       const mockPlan = updatedWorkoutPlanFixture;
 
+      (getWorkoutPlanById as jest.MockedFunction<typeof getWorkoutPlanById>).mockResolvedValue(
+        workoutPlanFixture
+      );
       (updateWorkoutPlan as jest.MockedFunction<typeof updateWorkoutPlan>).mockResolvedValue(
         mockPlan
       );
@@ -284,6 +287,9 @@ describe('GraphQL Resolvers', () => {
 
   describe('deleteWorkoutPlan', () => {
     it('should delete a workout plan', async () => {
+      (getWorkoutPlanById as jest.MockedFunction<typeof getWorkoutPlanById>).mockResolvedValue(
+        workoutPlanFixture
+      );
       (deleteWorkoutPlan as jest.MockedFunction<typeof deleteWorkoutPlan>).mockResolvedValue(true);
 
       const result = await rootValue.deleteWorkoutPlan({ planId: '1' });
@@ -374,7 +380,7 @@ describe('GraphQL Resolvers', () => {
 
       const result = await rootValue.exerciseHistory({ exerciseName: 'Bench Press' });
 
-      expect(getExerciseHistory).toHaveBeenCalledWith('Bench Press');
+      expect(getExerciseHistory).toHaveBeenCalledWith('Bench Press', undefined);
       expect(result).toEqual(mockHistory);
     });
   });

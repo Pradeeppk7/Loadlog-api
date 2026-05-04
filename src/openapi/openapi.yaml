@@ -2,6 +2,10 @@ openapi: 3.1.0
 info:
   title: LiftLog API
   version: 1.0.0
+  description: |
+    Protected endpoints require a JWT bearer token.
+    First call `/auth/login` or `/auth/register`, copy the returned token,
+    then click the Swagger `Authorize` button and paste `Bearer <token>`.
 
 servers:
   - url: /
@@ -56,6 +60,8 @@ paths:
   /auth/me:
     get:
       operationId: me
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
       responses:
         '200':
           description: Authenticated user profile
@@ -63,10 +69,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /users:
     get:
       operationId: listUsers
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
       responses:
         '200':
           description: List of users
@@ -76,8 +90,16 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/User'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     post:
       operationId: createUser
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
@@ -91,11 +113,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /users/{userId}:
     get:
       operationId: getUserById
       parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
         - name: userId
           in: path
           required: true
@@ -108,9 +137,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     put:
       operationId: updateUser
       parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
         - name: userId
           in: path
           required: true
@@ -129,11 +171,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /users/{userId}/workout-plans:
     get:
       operationId: listUserWorkoutPlans
       parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
         - name: userId
           in: path
           required: true
@@ -159,11 +214,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedWorkoutPlansResponse'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /users/{userId}/workout-sessions:
     get:
       operationId: listUserWorkoutSessions
       parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
         - name: userId
           in: path
           required: true
@@ -189,11 +257,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedWorkoutSessionsResponse'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /workout-plans:
     get:
       operationId: listWorkoutPlans
       parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
         - name: page
           in: query
           schema:
@@ -214,9 +295,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedWorkoutPlansResponse'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
     post:
       operationId: createWorkoutPlan
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
@@ -230,11 +319,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WorkoutPlan'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /workout-plans/{planId}:
     get:
       operationId: getWorkoutPlanById
       parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
         - name: planId
           in: path
           required: true
@@ -247,10 +343,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WorkoutPlan'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
     put:
       operationId: updateWorkoutPlan
       parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
         - name: planId
           in: path
           required: true
@@ -265,10 +374,23 @@ paths:
       responses:
         '200':
           description: Updated workout plan
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
     delete:
       operationId: deleteWorkoutPlan
       parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
         - name: planId
           in: path
           required: true
@@ -277,11 +399,24 @@ paths:
       responses:
         '200':
           description: Deleted workout plan
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /exercises/{exerciseName}/history:
     get:
       operationId: getExerciseHistory
       parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
         - name: exerciseName
           in: path
           required: true
@@ -294,11 +429,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ExerciseHistoryResponse'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /workout-sessions:
     get:
       operationId: listWorkoutSessions
       parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
         - name: page
           in: query
           schema:
@@ -319,9 +461,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedWorkoutSessionsResponse'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
     post:
       operationId: createWorkoutSession
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
@@ -335,11 +485,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WorkoutSession'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /workout-sessions/{sessionId}:
     get:
       operationId: getWorkoutSessionById
       parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
         - name: sessionId
           in: path
           required: true
@@ -352,10 +515,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WorkoutSession'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /ai/coach-chat:
     post:
       operationId: coachChat
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
@@ -369,6 +546,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CoachChatResponse'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
                 
   
 components:
@@ -377,6 +560,16 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+      description: Paste your JWT as `Bearer <token>`.
+  parameters:
+    AuthorizationHeader:
+      name: Authorization
+      in: header
+      required: false
+      description: JWT bearer token in the format `Bearer <token>`.
+      schema:
+        type: string
+      example: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example.signature
   schemas:
     PaginationMetadata:
       type: object
@@ -835,6 +1028,19 @@ components:
           $ref: '#/components/schemas/User'
         token:
           type: string
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+        details:
+          oneOf:
+            - type: string
+            - type: array
+              items: {}
 
     CoachChatResponse:
       type: object

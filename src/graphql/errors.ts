@@ -19,3 +19,15 @@ export function databaseError(message: string): never {
     extensions: { code: 'INTERNAL_ERROR' },
   });
 }
+
+export function unauthorized(message: string): never {
+  throw new GraphQLError(message, {
+    extensions: { code: 'UNAUTHENTICATED' },
+  });
+}
+
+export function forbidden(message: string): never {
+  throw new GraphQLError(message, {
+    extensions: { code: 'FORBIDDEN' },
+  });
+}

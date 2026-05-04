@@ -175,11 +175,15 @@ export const typeDefs = `
   type Query {
     users: [User!]!
     user(userId: ID!): User
+    me: User
     workoutPlans(nameContains: String, userId: ID, page: Int, pageSize: Int): WorkoutPlanPage!
+    myWorkoutPlans(nameContains: String, page: Int, pageSize: Int): WorkoutPlanPage!
     workoutPlan(planId: ID!): WorkoutPlan
     workoutSessions(planId: ID, userId: ID, page: Int, pageSize: Int): WorkoutSessionPage!
+    myWorkoutSessions(planId: ID, page: Int, pageSize: Int): WorkoutSessionPage!
     workoutSession(sessionId: ID!): WorkoutSession
     exerciseHistory(exerciseName: String!): ExerciseHistory!
+    myExerciseHistory(exerciseName: String!): ExerciseHistory!
   }
 
   type Mutation {
