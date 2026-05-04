@@ -6,14 +6,64 @@ info:
 servers:
   - url: /
     description: Same-origin (Swagger UI served from this API)
-  - url: https://loadlog-api.onrender.com
+  - url: https://loadlog-api.onrender.com/
     description: Render production
   - url: http://localhost:3000
     description: Local development (localhost)
   - url: http://127.0.0.1:3000
     description: Local development (loopback)
 
+security:
+  - bearerAuth: []
+
 paths:
+  /auth/register:
+    post:
+      operationId: register
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterUserInput'
+      responses:
+        '201':
+          description: Registered user and token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /auth/login:
+    post:
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginInput'
+      responses:
+        '200':
+          description: Authenticated user and token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /auth/me:
+    get:
+      operationId: me
+      responses:
+        '200':
+          description: Authenticated user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
   /users:
     get:
       operationId: listUsers
@@ -322,6 +372,11 @@ paths:
                 
   
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     PaginationMetadata:
       type: object
@@ -720,6 +775,28 @@ components:
         coachProfile:
           $ref: '#/components/schemas/CoachProfile'
 
+    RegisterUserInput:
+      type: object
+      required:
+        - name
+        - email
+        - password
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        age:
+          type: integer
+          minimum: 13
+        coachProfile:
+          $ref: '#/components/schemas/CoachProfile'
+
     UpdateUserInput:
       type: object
       properties:
@@ -734,6 +811,30 @@ components:
           minimum: 13
         coachProfile:
           $ref: '#/components/schemas/CoachProfile'
+
+    LoginInput:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+
+    AuthResponse:
+      type: object
+      required:
+        - user
+        - token
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        token:
+          type: string
 
     CoachChatResponse:
       type: object

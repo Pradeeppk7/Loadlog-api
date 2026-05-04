@@ -70,6 +70,11 @@ Visit `http://localhost:3000/graphql` for the interactive GraphiQL explorer.
 ### REST API Documentation
 Visit `http://localhost:3000/docs` for Swagger UI documentation.
 
+### Production API
+- Base URL: `https://loadlog-api.onrender.com/`
+- Swagger UI: `https://loadlog-api.onrender.com/docs`
+- GraphQL UI: `https://loadlog-api.onrender.com/graphql`
+
 ### Health Check
 ```bash
 GET /health
@@ -177,6 +182,33 @@ tests/                   # Test files
 npm run build
 npm start
 ```
+
+### Azure Deployment With GitHub Actions
+
+The backend repo includes an Azure App Service deployment workflow:
+
+`Loadlog api/.github/workflows/azure-deploy.yml`
+
+Set these GitHub repository variables:
+
+- `AZURE_RESOURCE_GROUP`
+- `AZURE_WEBAPP_NAME`
+- `AZURE_CONTAINER_REGISTRY_LOGIN_SERVER`
+- `AZURE_IMAGE_NAME`
+
+Set these GitHub repository secrets:
+
+- `AZURE_CLIENT_ID`
+- `AZURE_TENANT_ID`
+- `AZURE_SUBSCRIPTION_ID`
+- `AZURE_REGISTRY_USERNAME`
+- `AZURE_REGISTRY_PASSWORD`
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `JWT_SECRET`
+- `JWT_EXPIRES_IN`
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL`
 
 ### Docker (Optional)
 
