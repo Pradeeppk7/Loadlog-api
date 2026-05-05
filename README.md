@@ -1,5 +1,69 @@
 # LoadLog API
 
+## Presentation Walkthrough
+
+Use this section to explain the project directly from the README during your presentation.
+
+### 1. Project Introduction
+
+This slide introduces LoadLog 2.0 as a workout tracking system with AI assistant support.
+
+![Project Introduction](src/assets/readmeimages/1.png)
+
+### 2. Problem Statement And Core Model
+
+This slide explains the problem the project solves and the main domain entities in the system.
+
+- Users need a simple way to track workout progression
+- Users forget previous weights and reps
+- The system models workout plans, exercises, sets, workout sessions, and exercise history
+- AI support is included for personalized help
+
+![Problem And Model](src/assets/readmeimages/2.png)
+
+### 3. User Flow
+
+
+- Create a workout plan
+- Follow a structured routine
+- Ask the AI coach for guidance
+- Log the workout session
+- Track progress over time
+- Receive AI summary and recommendations
+
+![User Flow](src/assets/readmeimages/3.png)
+
+### 4. System Architecture
+
+This slide explains how the full stack is connected.
+
+- Frontend: React client built with Vite and TypeScript
+- Backend: Node.js, Express, REST, GraphQL, and OpenAPI
+- Database: Supabase with PostgreSQL
+- External AI integration: Gemini
+
+The React frontend sends requests to the backend API. The backend handles authentication, validation, REST endpoints, GraphQL queries, and database operations. Gemini is used by the AI coach service for contextual responses.
+
+![Architecture](src/assets/readmeimages/4.png)
+
+### 5. Database Schema
+
+This slide explains the relational schema behind the backend.
+
+- `users`
+- `workout_plans`
+- `plan_exercises`
+- `plan_sets`
+- `workout_sessions`
+- `session_exercises`
+- `session_sets`
+
+This schema supports one-to-many relationships for both planned workouts and completed workout logs.
+
+![Schema Design](src/assets/readmeimages/5.png)
+
+
+
 A professional, production-ready GraphQL API for fitness workout tracking built with Node.js, TypeScript, and Supabase.
 
 ## 🚀 Features
