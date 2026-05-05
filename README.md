@@ -1,18 +1,11 @@
 # LoadLog API
-
-## Presentation Walkthrough
-
-Use this section to explain the project directly from the README during your presentation.
-
 ### 1. Project Introduction
-
-This slide introduces LoadLog 2.0 as a workout tracking system with AI assistant support.
 
 ![Project Introduction](src/assets/readmeimages/1.png)
 
 ### 2. Problem Statement And Core Model
 
-This slide explains the problem the project solves and the main domain entities in the system.
+
 
 - Users need a simple way to track workout progression
 - Users forget previous weights and reps
@@ -35,7 +28,6 @@ This slide explains the problem the project solves and the main domain entities 
 
 ### 4. System Architecture
 
-This slide explains how the full stack is connected.
 
 - Frontend: React client built with Vite and TypeScript
 - Backend: Node.js, Express, REST, GraphQL, and OpenAPI
@@ -48,7 +40,7 @@ The React frontend sends requests to the backend API. The backend handles authen
 
 ### 5. Database Schema
 
-This slide explains the relational schema behind the backend.
+
 
 - `users`
 - `workout_plans`
@@ -115,11 +107,6 @@ NODE_ENV=development
 PORT=3000
 ```
 
-5. Apply the auth migration in Supabase:
-```sql
-alter table public.users add column if not exists password_hash text;
-create unique index if not exists users_email_unique_idx on public.users (lower(email));
-```
 
 4. Start the development server:
 ```bash
@@ -151,10 +138,6 @@ Run the test suite:
 npm test
 ```
 
-Run tests with coverage:
-```bash
-npm run test:coverage
-```
 
 Run tests in watch mode:
 ```bash
@@ -185,30 +168,7 @@ npm run test:coverage    # Run tests with coverage
 npm run clean            # Clean build artifacts
 ```
 
-## 🏗️ Project Structure
 
-```
-src/
-├── config/              # Configuration management
-│   └── index.ts
-├── graphql/             # GraphQL schema and resolvers
-│   └── schema.ts
-├── handlers/            # REST API handlers
-├── middleware/          # Express middleware
-│   ├── errorHandler.ts
-│   └── security.ts
-├── models/              # Data models and types
-├── routes/              # API routes
-├── store/               # Data access layer
-├── utils/               # Utility functions
-│   ├── logger.ts
-│   └── validation.ts
-└── index.ts             # Application entry point
-
-tests/                   # Test files
-├── graphql.test.ts
-└── setup.ts
-```
 
 ## 🔒 Security
 
@@ -292,16 +252,6 @@ EXPOSE 3000
 CMD ["npm", "start"]
 ```
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/your-feature`
-3. Run tests: `npm test`
-4. Lint code: `npm run lint`
-5. Format code: `npm run format`
-6. Commit changes: `git commit -am 'Add your feature'`
-7. Push to branch: `git push origin feature/your-feature`
-8. Submit a pull request
 
 ## 📝 License
 

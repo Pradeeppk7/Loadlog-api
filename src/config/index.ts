@@ -38,7 +38,7 @@ const config: Config = {
   nodeEnv: process.env['NODE_ENV'] || 'development',
   auth: {
     jwtSecret: validateEnvVar('JWT_SECRET', process.env['JWT_SECRET']),
-    jwtExpiresIn: process.env['JWT_EXPIRES_IN'] || '7d',
+    jwtExpiresIn: process.env['JWT_EXPIRES_IN'] || '1d',
   },
   supabase: {
     url: validateEnvVar('SUPABASE_URL', process.env['SUPABASE_URL']),
