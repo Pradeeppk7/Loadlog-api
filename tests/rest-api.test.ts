@@ -70,6 +70,7 @@ describe('REST API', () => {
     planId: '11111111-1111-1111-1111-111111111111',
     performedAt: '2024-01-01T00:00:00Z',
     notes: 'Felt strong',
+    caloriesBurned: 350,
     exercises: [
       {
         exerciseName: 'Bench Press',
@@ -229,6 +230,7 @@ describe('REST API', () => {
       planId: '11111111-1111-1111-1111-111111111111',
       performedAt: '2024-01-01T00:00:00Z',
       notes: 'Felt strong',
+      caloriesBurned: 350,
       exercises: [
         {
           exerciseName: 'Bench Press',
@@ -238,8 +240,30 @@ describe('REST API', () => {
     });
 
     expect(response.status).toBe(201);
-    expect(createWorkoutSession).toHaveBeenCalled();
+    expect(createWorkoutSession).toHaveBeenCalledWith(
+      expect.objectContaining({ caloriesBurned: 350 })
+    );
     expect(response.body.id).toBe('session-1');
+    expect(response.body.caloriesBurned).toBe(350);
+  });
+
+  it('rejects a workout session with negative calories burned', async () => {
+    (getWorkoutPlanById as jest.MockedFunction<typeof getWorkoutPlanById>).mockResolvedValue(
+      workoutPlanFixture
+    );
+
+    const response = await request(app).post('/workout-sessions').set(authHeader()).send({
+      planId: '11111111-1111-1111-1111-111111111111',
+      caloriesBurned: -5,
+      exercises: [
+        {
+          exerciseName: 'Bench Press',
+          sets: [{ setNumber: 1, actualReps: 8, actualWeight: 80 }],
+        },
+      ],
+    });
+
+    expect(response.status).toBe(400);
   });
 
   it('returns a workout session by id', async () => {
@@ -318,6 +342,44 @@ describe('REST API', () => {
     expect(response.body.coachProfile.goal).toBe('Lose fat');
   });
 
+  it('updates body stats and allows clearing optional fields', async () => {
+    (updateUser as jest.MockedFunction<typeof updateUser>).mockResolvedValue({
+      ...userFixture,
+      bodyWeightKg: 78,
+      heightCm: 176,
+    });
+
+    const response = await request(app).put(`/users/${userFixture.id}`).set(authHeader()).send({
+      name: 'Pradeep',
+      email: 'pradeep@example.com',
+      age: null,
+      bodyWeightKg: 78,
+      heightCm: 176,
+      coachProfile: {
+        goal: '',
+        dietaryPreferences: '',
+        injuriesOrLimitations: '',
+        experienceLevel: 'intermediate',
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(updateUser).toHaveBeenCalledWith(
+      userFixture.id,
+      expect.objectContaining({ age: null, bodyWeightKg: 78, heightCm: 176 })
+    );
+    expect(response.body.bodyWeightKg).toBe(78);
+  });
+
+  it('rejects updating another user profile', async () => {
+    const response = await request(app)
+      .put('/users/22222222-2222-2222-2222-222222222222')
+      .set(authHeader())
+      .send({ bodyWeightKg: 78 });
+
+    expect(response.status).toBe(403);
+  });
+
   it('lists workout plans for a user', async () => {
     (getUserById as jest.MockedFunction<typeof getUserById>).mockResolvedValue(userFixture);
     (listWorkoutPlansPaginated as jest.MockedFunction<typeof listWorkoutPlansPaginated>).mockResolvedValue({
@@ -364,6 +426,30 @@ describe('REST API', () => {
     });
   });
 
+  it('filters a user workout sessions by plan', async () => {
+    (getUserById as jest.MockedFunction<typeof getUserById>).mockResolvedValue(userFixture);
+    (
+      listWorkoutSessionsPaginated as jest.MockedFunction<typeof listWorkoutSessionsPaginated>
+    ).mockResolvedValue({
+      items: [workoutSessionFixture],
+      pagination: { page: 2, pageSize: 5, totalItems: 6, totalPages: 2 },
+    });
+
+    const response = await request(app)
+      .get(`/users/${userFixture.id}/workout-sessions`)
+      .query({ planId: workoutSessionFixture.planId, page: 2, pageSize: 5 })
+      .set(authHeader());
+
+    expect(response.status).toBe(200);
+    expect(listWorkoutSessionsPaginated).toHaveBeenCalledWith({
+      userId: userFixture.id,
+      planId: workoutSessionFixture.planId,
+      page: 2,
+      pageSize: 5,
+    });
+    expect(response.body.pagination.totalPages).toBe(2);
+  });
+
   it('registers a user and returns a token', async () => {
     (createUserWithPassword as jest.MockedFunction<typeof createUserWithPassword>).mockResolvedValue(
       userFixture
@@ -382,6 +468,43 @@ describe('REST API', () => {
     expect(response.status).toBe(201);
     expect(response.body.user.email).toBe('pradeep@example.com');
     expect(response.body.token).toBeTruthy();
+  });
+
+  it('registers a user with body weight and height', async () => {
+    (createUserWithPassword as jest.MockedFunction<typeof createUserWithPassword>).mockResolvedValue(
+      { ...userFixture, bodyWeightKg: 82.5, heightCm: 180 }
+    );
+    (getUserAuthByEmail as jest.MockedFunction<typeof getUserAuthByEmail>).mockResolvedValue(
+      undefined
+    );
+    (getUserByEmail as jest.MockedFunction<typeof getUserByEmail>).mockResolvedValue(undefined);
+
+    const response = await request(app).post('/auth/register').send({
+      name: 'Pradeep',
+      email: 'pradeep@example.com',
+      password: 'password123',
+      bodyWeightKg: 82.5,
+      heightCm: 180,
+    });
+
+    expect(response.status).toBe(201);
+    expect(createUserWithPassword).toHaveBeenCalledWith(
+      expect.objectContaining({ bodyWeightKg: 82.5, heightCm: 180 }),
+      expect.any(String)
+    );
+    expect(response.body.user.bodyWeightKg).toBe(82.5);
+    expect(response.body.user.heightCm).toBe(180);
+  });
+
+  it('rejects registration with an implausible body weight', async () => {
+    const response = await request(app).post('/auth/register').send({
+      name: 'Pradeep',
+      email: 'pradeep@example.com',
+      password: 'password123',
+      bodyWeightKg: 5,
+    });
+
+    expect(response.status).toBe(400);
   });
 
   it('logs in with valid credentials', async () => {

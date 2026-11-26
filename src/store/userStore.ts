@@ -11,6 +11,8 @@ type UserRow = {
   name: string;
   email: string;
   age: number | null;
+  body_weight_kg: number | string | null;
+  height_cm: number | string | null;
   password_hash: string | null;
   goal: string | null;
   dietary_preferences: string | null;
@@ -33,6 +35,12 @@ function mapUser(row: UserRow): User {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     ...(row.age !== null ? { age: row.age } : {}),
+    ...(row.body_weight_kg !== null && row.body_weight_kg !== undefined
+      ? { bodyWeightKg: Number(row.body_weight_kg) }
+      : {}),
+    ...(row.height_cm !== null && row.height_cm !== undefined
+      ? { heightCm: Number(row.height_cm) }
+      : {}),
     ...(row.goal || row.dietary_preferences || row.injuries_or_limitations || row.experience_level
       ? {
           coachProfile: {
@@ -53,6 +61,8 @@ function mapUserInput(input: CreateUserInput | UpdateUserInput) {
     ...(input.name !== undefined ? { name: input.name } : {}),
     ...(input.email !== undefined ? { email: input.email } : {}),
     ...(input.age !== undefined ? { age: input.age } : {}),
+    ...(input.bodyWeightKg !== undefined ? { body_weight_kg: input.bodyWeightKg } : {}),
+    ...(input.heightCm !== undefined ? { height_cm: input.heightCm } : {}),
     ...(input.coachProfile?.goal !== undefined ? { goal: input.coachProfile.goal } : {}),
     ...(input.coachProfile?.dietaryPreferences !== undefined
       ? { dietary_preferences: input.coachProfile.dietaryPreferences }

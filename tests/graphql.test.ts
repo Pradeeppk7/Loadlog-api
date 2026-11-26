@@ -115,6 +115,7 @@ describe('GraphQL Resolvers', () => {
     userId: '11111111-1111-1111-1111-111111111111',
     planId: '11111111-1111-1111-1111-111111111111',
     performedAt: '2024-01-01T00:00:00Z',
+    caloriesBurned: 420,
     exercises: [
       {
         exerciseName: 'Bench Press',
@@ -128,6 +129,7 @@ describe('GraphQL Resolvers', () => {
     userId: '11111111-1111-1111-1111-111111111111',
     planId: '11111111-1111-1111-1111-111111111111',
     performedAt: '2024-01-01T00:00:00Z',
+    caloriesBurned: 420,
     exercises: [
       {
         exerciseName: 'Bench Press',

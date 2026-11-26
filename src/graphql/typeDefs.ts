@@ -58,6 +58,7 @@ export const typeDefs = `
     planId: ID!
     performedAt: String!
     notes: String
+    caloriesBurned: Int
     exercises: [SessionExercise!]!
   }
 
@@ -77,6 +78,7 @@ export const typeDefs = `
     planId: ID!
     performedAt: String
     notes: String
+    caloriesBurned: Int
     exercises: [CreateSessionExerciseInput!]!
   }
 
@@ -92,6 +94,8 @@ export const typeDefs = `
     name: String!
     email: String!
     age: Int
+    bodyWeightKg: Float
+    heightCm: Float
     coachProfile: CoachProfile
     createdAt: String!
     updatedAt: String!
@@ -108,6 +112,8 @@ export const typeDefs = `
     name: String!
     email: String!
     age: Int
+    bodyWeightKg: Float
+    heightCm: Float
     coachProfile: CoachProfileInput
   }
 
@@ -115,6 +121,8 @@ export const typeDefs = `
     name: String
     email: String
     age: Int
+    bodyWeightKg: Float
+    heightCm: Float
     coachProfile: CoachProfileInput
   }
 

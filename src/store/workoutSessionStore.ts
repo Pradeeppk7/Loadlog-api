@@ -6,6 +6,8 @@ import {
   PaginationInput,
 } from '../models/workoutPlanModels';
 import { paginateItems } from '../utils/pagination';
+import { estimateCaloriesBurned } from '../utils/calories';
+import { getUserById } from './userStore';
 
 type SessionSetRow = {
   set_number: number;
@@ -19,6 +21,7 @@ type WorkoutSessionRow = {
   plan_id: string;
   performed_at: string;
   notes: string | null;
+  calories_burned: number | null;
 };
 
 type SessionExerciseRow = {
@@ -81,12 +84,33 @@ async function buildWorkoutSession(session: WorkoutSessionRow): Promise<WorkoutS
     performedAt: session.performed_at,
     exercises: formattedExercises,
     ...(session.notes ? { notes: session.notes } : {}),
+    ...(session.calories_burned !== null && session.calories_burned !== undefined
+      ? { caloriesBurned: Number(session.calories_burned) }
+      : {}),
   };
+}
+
+async function resolveCaloriesBurned(data: CreateWorkoutSessionInput): Promise<number> {
+  if (data.caloriesBurned !== undefined && data.caloriesBurned !== null) {
+    return data.caloriesBurned;
+  }
+
+  let bodyWeightKg: number | undefined;
+  if (data.userId) {
+    try {
+      bodyWeightKg = (await getUserById(data.userId))?.bodyWeightKg;
+    } catch {
+      bodyWeightKg = undefined;
+    }
+  }
+
+  return estimateCaloriesBurned(data.exercises, bodyWeightKg);
 }
 
 export async function createWorkoutSession(
   data: CreateWorkoutSessionInput
 ): Promise<WorkoutSession> {
+  const caloriesBurned = await resolveCaloriesBurned(data);
   const { data: session, error: sessionError } = await supabase
     .from('workout_sessions')
     .insert({
@@ -94,6 +118,7 @@ export async function createWorkoutSession(
       plan_id: data.planId,
       performed_at: data.performedAt || new Date().toISOString(),
       notes: data.notes,
+      calories_burned: caloriesBurned,
     })
     .select()
     .single<WorkoutSessionRow>();

@@ -71,7 +71,10 @@ function formatSessionSummary(session: WorkoutSession): string {
     })
     .join(' | ');
 
-  return `Session ${session.id} on ${session.performedAt} for plan ${session.planId}: ${exercises}`;
+  const calories =
+    session.caloriesBurned !== undefined ? ` (${session.caloriesBurned} kcal burned)` : '';
+
+  return `Session ${session.id} on ${session.performedAt} for plan ${session.planId}${calories}: ${exercises}`;
 }
 
 async function getTrainingContext(userId?: string): Promise<string> {
@@ -101,10 +104,13 @@ async function getTrainingContext(userId?: string): Promise<string> {
 function buildSystemPrompt(
   userName: string | undefined,
   profile: CoachProfile | undefined,
-  trainingContext: string
+  trainingContext: string,
+  body?: { bodyWeightKg?: number; heightCm?: number }
 ): string {
   const profileLines = [
     userName ? `Customer name: ${userName}` : undefined,
+    body?.bodyWeightKg !== undefined ? `Body weight: ${body.bodyWeightKg} kg` : undefined,
+    body?.heightCm !== undefined ? `Height: ${body.heightCm} cm` : undefined,
     profile?.goal ? `Primary goal: ${profile.goal}` : undefined,
     profile?.dietaryPreferences ? `Dietary preferences: ${profile.dietaryPreferences}` : undefined,
     profile?.injuriesOrLimitations
@@ -223,7 +229,10 @@ export async function getCoachChatReply(input: CoachChatInput): Promise<string> 
     ...(input.profile || {}),
   };
   const trainingContext = await getTrainingContext(input.userId);
-  const systemPrompt = buildSystemPrompt(storedUser?.name, mergedProfile, trainingContext);
+  const systemPrompt = buildSystemPrompt(storedUser?.name, mergedProfile, trainingContext, {
+    ...(storedUser?.bodyWeightKg !== undefined ? { bodyWeightKg: storedUser.bodyWeightKg } : {}),
+    ...(storedUser?.heightCm !== undefined ? { heightCm: storedUser.heightCm } : {}),
+  });
   const contents = buildConversation(input, systemPrompt);
   const initialPayload = await requestGemini(contents, 1200);
   const initialCandidate = extractCandidate(initialPayload);

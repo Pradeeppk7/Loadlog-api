@@ -85,6 +85,11 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction): 
       ip: req.ip,
     });
   });
-
+  //Logs:
+  // HTTP method (GET, POST)
+  // URL
+  // Status code (200, 404, etc.)
+  // Time taken
+  // User IP
   next();
 };

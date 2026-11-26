@@ -115,9 +115,12 @@ export const userHandlers = {
       ...(typeof req.query['pageSize'] === 'string' ? { pageSize: req.query['pageSize'] } : {}),
     });
 
+    const planId = typeof req.query['planId'] === 'string' ? req.query['planId'] : undefined;
+
     return res.json(
       await listWorkoutSessionsPaginated({
         userId: c.request.params.userId,
+        ...(planId ? { planId } : {}),
         page,
         pageSize,
       })

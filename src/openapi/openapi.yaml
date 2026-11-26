@@ -237,6 +237,11 @@ paths:
           required: true
           schema:
             type: string
+        - name: planId
+          in: query
+          description: Only return sessions logged against this workout plan
+          schema:
+            type: string
         - name: page
           in: query
           schema:
@@ -791,6 +796,10 @@ components:
           format: date-time
         notes:
           type: string
+        caloriesBurned:
+          type: integer
+          minimum: 0
+          description: Estimated calories burned during the session (kcal)
         exercises:
           type: array
           items:
@@ -841,6 +850,11 @@ components:
           format: date-time
         notes:
           type: string
+        caloriesBurned:
+          type: integer
+          minimum: 0
+          maximum: 10000
+          description: Calories burned during the session (kcal). Omit to have the API estimate it from the logged sets.
         exercises:
           type: array
           minItems: 1
@@ -941,6 +955,12 @@ components:
           format: email
         age:
           type: integer
+        bodyWeightKg:
+          type: number
+          description: Body weight in kilograms
+        heightCm:
+          type: number
+          description: Height in centimetres
         coachProfile:
           $ref: '#/components/schemas/CoachProfile'
         createdAt:
@@ -965,6 +985,16 @@ components:
         age:
           type: integer
           minimum: 13
+        bodyWeightKg:
+          type: number
+          minimum: 20
+          maximum: 400
+          description: Body weight in kilograms
+        heightCm:
+          type: number
+          minimum: 50
+          maximum: 300
+          description: Height in centimetres
         coachProfile:
           $ref: '#/components/schemas/CoachProfile'
 
@@ -987,6 +1017,16 @@ components:
         age:
           type: integer
           minimum: 13
+        bodyWeightKg:
+          type: number
+          minimum: 20
+          maximum: 400
+          description: Body weight in kilograms
+        heightCm:
+          type: number
+          minimum: 50
+          maximum: 300
+          description: Height in centimetres
         coachProfile:
           $ref: '#/components/schemas/CoachProfile'
 
@@ -1002,6 +1042,19 @@ components:
         age:
           type: integer
           minimum: 13
+          nullable: true
+        bodyWeightKg:
+          type: number
+          minimum: 20
+          maximum: 400
+          nullable: true
+          description: Body weight in kilograms; null clears it
+        heightCm:
+          type: number
+          minimum: 50
+          maximum: 300
+          nullable: true
+          description: Height in centimetres; null clears it
         coachProfile:
           $ref: '#/components/schemas/CoachProfile'
 

@@ -64,6 +64,7 @@ export const workoutSessionValidation = {
     planId: Joi.string().uuid().required(),
     performedAt: Joi.date().iso().allow(null),
     notes: Joi.string().max(1000).allow(''),
+    caloriesBurned: Joi.number().integer().min(0).max(10000).allow(null),
     exercises: Joi.array()
       .items(
         Joi.object({
@@ -114,6 +115,8 @@ export const authValidation = {
     email: Joi.string().trim().email().required(),
     password: passwordSchema,
     age: Joi.number().integer().min(13).max(120),
+    bodyWeightKg: Joi.number().min(20).max(400),
+    heightCm: Joi.number().min(50).max(300),
     coachProfile: Joi.object({
       goal: Joi.string().trim().max(500),
       dietaryPreferences: Joi.string().trim().max(500),
@@ -132,6 +135,8 @@ export const userValidation = {
     name: Joi.string().trim().min(1).max(100).required(),
     email: Joi.string().trim().email().required(),
     age: Joi.number().integer().min(13).max(120),
+    bodyWeightKg: Joi.number().min(20).max(400),
+    heightCm: Joi.number().min(50).max(300),
     coachProfile: Joi.object({
       goal: Joi.string().trim().max(500),
       dietaryPreferences: Joi.string().trim().max(500),
@@ -142,11 +147,13 @@ export const userValidation = {
   update: Joi.object<UpdateUserInput>({
     name: Joi.string().trim().min(1).max(100),
     email: Joi.string().trim().email(),
-    age: Joi.number().integer().min(13).max(120),
+    age: Joi.number().integer().min(13).max(120).allow(null),
+    bodyWeightKg: Joi.number().min(20).max(400).allow(null),
+    heightCm: Joi.number().min(50).max(300).allow(null),
     coachProfile: Joi.object({
-      goal: Joi.string().trim().max(500),
-      dietaryPreferences: Joi.string().trim().max(500),
-      injuriesOrLimitations: Joi.string().trim().max(500),
+      goal: Joi.string().trim().max(500).allow(''),
+      dietaryPreferences: Joi.string().trim().max(500).allow(''),
+      injuriesOrLimitations: Joi.string().trim().max(500).allow(''),
       experienceLevel: Joi.string().valid('beginner', 'intermediate', 'advanced'),
     }),
   }),

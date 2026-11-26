@@ -57,6 +57,7 @@ export type WorkoutSession = {
   planId: string;
   performedAt: string;
   notes?: string;
+  caloriesBurned?: number;
   exercises: SessionExercise[];
 };
 
@@ -76,6 +77,7 @@ export type CreateWorkoutSessionInput = {
   planId: string;
   performedAt?: string;
   notes?: string;
+  caloriesBurned?: number;
   exercises: CreateSessionExerciseInput[];
 };
 
@@ -107,6 +109,8 @@ export type User = {
   name: string;
   email: string;
   age?: number;
+  bodyWeightKg?: number;
+  heightCm?: number;
   coachProfile?: CoachProfile;
   createdAt: string;
   updatedAt: string;
@@ -116,13 +120,17 @@ export type CreateUserInput = {
   name: string;
   email: string;
   age?: number;
+  bodyWeightKg?: number;
+  heightCm?: number;
   coachProfile?: CoachProfile;
 };
 
 export type UpdateUserInput = {
   name?: string;
   email?: string;
-  age?: number;
+  age?: number | null;
+  bodyWeightKg?: number | null;
+  heightCm?: number | null;
   coachProfile?: CoachProfile;
 };
 
